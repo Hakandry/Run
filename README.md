@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.3.5
+**Sürüm:** v0.3.6
 
 ## Neler var
 
@@ -145,6 +145,11 @@ düzeltirsen rozet durumu da kendiliğinden düzelir.
 | Beşli hafta | Bir takvim haftasında 5 antrenman | Deneyimli |
 | Bir hafta seri | 7 gün üst üste aktif | Deneyimli |
 | Bir ay seri | 30 gün üst üste aktif | Profesyonel |
+
+Kilitli rozetler, eksik kalan mesafeyi değil **gereken ölçütü** yazar: tek antrenman
+rozetlerinde "Tek çıkışta 5 km koşu" ve altında "En uzun koşun: 2,00 km". Böylece
+önceki koşuların üstüne eklendiği izlenimi doğmaz. Birikimli rozetlerde ise
+"Toplamda 30 km koşu" ve "Şu an 24,00 km · 6,00 km kaldı" gösterilir.
 
 Süreklilik rozetlerinde "en yoğun hafta" ve "en uzun seri" tüm geçmiş taranarak
 bulunur; kazanıldığında hangi hafta ya da hangi tarih aralığı olduğunu da yazar.

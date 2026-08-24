@@ -11,7 +11,7 @@ import {
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.3.5';
+const APP_VERSION = '0.3.6';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -667,12 +667,44 @@ const MEDAL = (color, on) => `
             stroke-linecap="round"/>`}
   </svg>`;
 
-function badgeProgressText(state) {
+// Kilitli rozette ölçütü tam olarak yazar: "ne gerekiyor" + "şu an neredesin".
+// Tek antrenman rozetlerinde eksik mesafe DEĞİL, gereken mesafe gösterilir —
+// önceki koşuların üstüne eklenmediği net olsun diye.
+const targetKm = (km) => `${fmtNum(km, Number.isInteger(km) ? 0 : 1)} km`;
+
+function badgeRequirement(state) {
+  const { badge, current, remaining } = state;
+  if (badge.kind === 'weekly') {
+    return {
+      need: `Bir haftada ${badge.target} antrenman`,
+      now: `En yoğun haftan: ${current} antrenman`,
+    };
+  }
+  if (badge.kind === 'streak') {
+    return {
+      need: `${badge.target} gün üst üste antrenman`,
+      now: `En uzun serin: ${current} gün`,
+    };
+  }
+  if (badge.kind === 'total') {
+    return {
+      need: `Toplamda ${targetKm(badge.target)} koşu`,
+      now: `Şu an ${fmtKm(current)} · ${fmtKm(remaining)} kaldı`,
+    };
+  }
+  return {
+    need: `Tek çıkışta ${targetKm(badge.target)} koşu`,
+    now: current > 0 ? `En uzun koşun: ${fmtKm(current)}` : 'Henüz koşu kaydın yok',
+  };
+}
+
+// Özet kartındaki "sıradaki hedef" için kısa hâli
+function badgeShortNeed(state) {
   const { badge, remaining } = state;
-  if (badge.kind === 'weekly') return `${Math.ceil(remaining)} antrenman daha`;
-  if (badge.kind === 'streak') return `${Math.ceil(remaining)} gün daha`;
-  if (badge.kind === 'total') return `Toplamda ${fmtKm(remaining)} daha`;
-  return `Tek koşuda ${fmtKm(remaining)} daha`;
+  if (badge.kind === 'weekly') return `bir haftada ${badge.target} antrenman`;
+  if (badge.kind === 'streak') return `${badge.target} gün üst üste`;
+  if (badge.kind === 'total') return `toplamda ${fmtKm(remaining)} daha`;
+  return `tek çıkışta ${targetKm(badge.target)}`;
 }
 
 function badgeEarnedText(state) {
@@ -705,7 +737,7 @@ function renderBadges() {
       <div class="goal-bar"><i style="width:${(earned.length / states.length) * 100}%"></i></div>
       <div class="muted">${earned.length
         ? `Ulaştığın en üst kademe: <b style="color:var(--text)">${topLevel}</b>.${next
-            ? ` Sıradaki: <b style="color:var(--text)">${next.badge.title} (${next.badge.name})</b> — ${badgeProgressText(next)}.`
+            ? ` Sıradaki: <b style="color:var(--text)">${next.badge.title}</b> — ${badgeShortNeed(next)}.`
             : ' Tüm rozetleri topladın.'}`
         : 'Henüz rozet yok. İlk kaydını ekle, merdiven açılmaya başlasın.'}</div>
     </div>`;
@@ -732,8 +764,9 @@ function renderBadges() {
             ${on
               ? `<div class="earned-tag">Kazanıldı</div>
                  <div class="bmeta">${badgeEarnedText(state)}</div>`
-              : `<div class="bbar"><i style="width:${(progress * 100).toFixed(0)}%"></i></div>
-                 <div class="bmeta">${badgeProgressText(state)}</div>`}
+              : `<div class="need">${badgeRequirement(state).need}</div>
+                 <div class="bbar"><i style="width:${(progress * 100).toFixed(0)}%"></i></div>
+                 <div class="bmeta">${badgeRequirement(state).now}</div>`}
           </div>`;
         }).join('')}
       </div>
