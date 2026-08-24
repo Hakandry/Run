@@ -1,5 +1,5 @@
 // Basit önbellek: uygulama kabuğu offline çalışsın.
-const VERSION = 'koc-v0.2.0';
+const VERSION = 'koc-v0.3.0';
 const ASSETS = [
   './',
   './index.html',

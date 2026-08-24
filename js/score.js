@@ -83,6 +83,13 @@ export function kcalFor(mets, weightKg, durationSec) {
   return (mets * 3.5 * weightKg / 200) * (durationSec / 60);
 }
 
+// Net kalori: aynı sürede zaten harcayacağın dinlenme metabolizması (1 MET)
+// düşülür. Kilo eşdeğeri hesabında brüt değil bu kullanılır.
+export function kcalNetFor(mets, weightKg, durationSec) {
+  if (!mets || !weightKg || !(durationSec > 0)) return null;
+  return (Math.max(mets - 1, 0) * 3.5 * weightKg / 200) * (durationSec / 60);
+}
+
 /* ---- Alt puanlar (her biri 0–10) ---- */
 
 const LOAD_CURVE = [[0, 0], [20, 2.5], [40, 4.5], [60, 6], [85, 7.5], [120, 8.8], [170, 9.6], [250, 10]];
@@ -129,6 +136,7 @@ export function scoreActivity(activity, settings = {}, history = []) {
   const zone = intensityZone(x);
   const mets = metsFor(activity.type, activity.distanceKm, activity.durationSec);
   const kcal = kcalFor(mets, weightKg, activity.durationSec);
+  const kcalNet = kcalNetFor(mets, weightKg, activity.durationSec);
 
   // Yük: nabız varsa Banister TRIMP, yoksa Foster session-RPE'den TRIMP eşdeğeri.
   const trimp = banisterTrimp(durationMin, x, sex);
@@ -186,6 +194,7 @@ export function scoreActivity(activity, settings = {}, history = []) {
       sessionRpeLoad,
       mets,
       kcal,
+      kcalNet,
       maxHrUsed: maxHr,
       maxHrEstimated: !Number(settings.maxHr) && Boolean(maxHr),
       restHrUsed: restHr,

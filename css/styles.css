@@ -168,6 +168,30 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 .goal-bar.done i { background: linear-gradient(90deg, var(--goal), var(--speed)); }
 .goal-note { font-size: 0.75rem; color: var(--muted); }
 
+/* Kalori → kilo ipucu */
+.fat {
+  display: grid; gap: 10px; margin-bottom: 14px; padding: 14px;
+  border: 1px solid #4a3a2a; border-radius: var(--radius);
+  background:
+    radial-gradient(95% 130% at 0% 0%, rgba(251, 146, 60, 0.20), transparent 58%),
+    radial-gradient(85% 130% at 100% 100%, rgba(251, 191, 36, 0.13), transparent 55%),
+    var(--surface);
+}
+.fat-title {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--energy);
+}
+.fat-main { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fat-main small { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+.fat-bar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.fat-bar i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--energy), var(--speed));
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.fat-line { font-size: 0.83rem; color: var(--text); line-height: 1.5; }
+.fat-note { font-size: 0.72rem; color: var(--muted); line-height: 1.45; }
+
 /* Form */
 .form { display: grid; gap: 14px; }
 .field { display: grid; gap: 6px; font-size: 0.85rem; color: var(--muted); }

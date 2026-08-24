@@ -1,13 +1,15 @@
 import * as store from './storage.js';
 import * as S from './stats.js';
 import { renderChart } from './chart.js';
-import { scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr } from './score.js';
+import {
+  scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr, metsFor, kcalFor,
+} from './score.js';
 import {
   TYPE_LABEL, TYPE_ICON, fmtNum, fmtKm, fmtDuration, fmtPace, fmtPaceUnit, fmtSpeedKmh,
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.3.0';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -111,6 +113,18 @@ function computeScores() {
   });
 }
 
+// Kalori puan motorunda hesaplanıyor; adım girilmemişse tahmin ediliyor.
+const kcalOf = (act) => scores.get(act.id)?.detail.kcal ?? null;
+const kcalNetOf = (act) => scores.get(act.id)?.detail.kcalNet ?? null;
+const stepsOf = (act) => act.steps || S.estimateSteps(act, settings.heightCm);
+// Toplamlarda 0 anlamlı bir değerdir; hesaplanamayan değerler null gelir.
+const fmtSteps = (v) => (Number.isFinite(v) && v >= 0 ? `${Math.round(v).toLocaleString('tr-TR')} adım` : '—');
+const fmtKcal = (v) => (Number.isFinite(v) && v >= 0 ? `${Math.round(v).toLocaleString('tr-TR')} kcal` : '—');
+
+function sumBy(list, fn) {
+  return list.reduce((sum, act) => sum + (Number(fn(act)) || 0), 0);
+}
+
 function profileReady() {
   return Boolean(Number(settings.age) && Number(settings.weightKg));
 }
@@ -119,6 +133,8 @@ function renderSummary() {
   $('#coachMsg').textContent = S.coachMessage(activities, settings);
 
   const { thisWeek, lastWeek } = S.weekSummaries(activities);
+  const weekList = S.inRange(activities, S.weekStartIso(0), S.weekStartIso(-1));
+  const lastWeekList = S.inRange(activities, S.weekStartIso(1), S.weekStartIso(0));
   const goal = Number(settings.weeklyGoalKm) || 0;
   const goalPct = goal > 0 ? Math.min(999, (thisWeek.totalKm / goal) * 100) : null;
 
@@ -132,6 +148,10 @@ function renderSummary() {
       deltaHtml(speedDelta(thisWeek.avgPace, lastWeek.avgPace)), HUE.speed),
     statCard('Ort. nabız', fmtHr(thisWeek.avgHr),
       deltaHtml(S.delta(thisWeek.avgHr, lastWeek.avgHr, true)), HUE.hr),
+    statCard('Bu hafta kalori', fmtKcal(sumBy(weekList, kcalOf)),
+      deltaHtml(S.delta(sumBy(weekList, kcalOf), sumBy(lastWeekList, kcalOf), false)), HUE.energy),
+    statCard('Bu hafta adım', fmtSteps(sumBy(weekList, stepsOf)),
+      deltaHtml(S.delta(sumBy(weekList, stepsOf), sumBy(lastWeekList, stepsOf), false)), HUE.walk),
     ...(scoreStat ? [scoreStat] : []),
   ].join('');
 
@@ -150,6 +170,7 @@ function renderSummary() {
         : `Hedefe ${fmtKm(goal - thisWeek.totalKm)} kaldı · %${fmtNum(goalPct, 0)}`}</div>
     </div>`;
 
+  renderFatCard();
   renderMetricChart();
   renderRecords();
 }
@@ -167,6 +188,45 @@ function recentScore() {
     `<div class="d"><span class="flat">son antrenman ${fmtNum(scores.get(recent[0].id).score, 1)} · ${tier.name}</span></div></div>`;
 }
 
+// Toplam net kaloriyi kaba yağ eşdeğerine çevirip motivasyon olarak gösterir.
+function renderFatCard() {
+  const box = $('#fatCard');
+  const totalNet = sumBy(activities, kcalNetOf);
+
+  if (!totalNet) {
+    box.innerHTML = Number(settings.weightKg) ? '' : `
+      <div class="fat">
+        <div class="fat-title">Kalori takibi</div>
+        <div class="fat-line">Kalori hesabı için Ayarlar'a kilonu gir — sonrasında
+          harcadığın enerjiyi ve kaç kiloya denk geldiğini burada göreceksin.</div>
+      </div>`;
+    return;
+  }
+
+  const from = S.daysAgoIso(29);
+  const recentNet = sumBy(activities.filter((act) => act.date >= from), kcalNetOf);
+  const kgTotal = totalNet / S.KCAL_PER_KG_FAT;
+  const kgRecent = recentNet / S.KCAL_PER_KG_FAT;
+  const towardNext = totalNet % S.KCAL_PER_KG_FAT;
+  const remaining = S.KCAL_PER_KG_FAT - towardNext;
+  const pct = (towardNext / S.KCAL_PER_KG_FAT) * 100;
+
+  box.innerHTML = `
+    <div class="fat">
+      <div class="fat-title">Yaktığın enerji</div>
+      <div class="fat-main">${fmtNum(kgTotal, 2)} kg <small>yağ eşdeğeri · toplam ${fmtKcal(totalNet)} net</small></div>
+      <div class="fat-bar"><i style="width:${pct.toFixed(1)}%"></i></div>
+      <div class="fat-line">
+        Bir sonraki kiloya <b>${fmtKcal(remaining)}</b> kaldı${
+          kgRecent > 0.01 ? ` · son 30 günde ${fmtNum(kgRecent, 2)} kg eşdeğeri yaktın` : ''}.
+      </div>
+      <div class="fat-note">Kaba bir tahmin: 1 kg yağ ≈ 7.700 kcal (Wishnofsky, 1958).
+        Dinlenme metabolizman düşülerek net enerji kullanılır. Gerçek kilo değişimi
+        beslenmene, su dengene ve metabolik uyuma bağlıdır — bu sayı sadece
+        antrenmanla harcadığın enerjinin karşılığıdır.</div>
+    </div>`;
+}
+
 const CHART_FORMATTERS = {
   distanceKm: { label: 'Mesafe', format: (v) => fmtNum(v, 1), color: '#38bdf8' },
   pace: {
@@ -177,6 +237,8 @@ const CHART_FORMATTERS = {
   },
   avgHr: { label: 'Ort. nabız', format: (v) => `${Math.round(v)}`, color: '#fb7185' },
   beatsPerKm: { label: 'Nabız verimi', format: (v) => `${Math.round(v)}`, color: '#a78bfa' },
+  kcal: { label: 'Kalori', format: (v) => `${Math.round(v)}`, color: '#fb923c', value: (act) => kcalOf(act) },
+  steps: { label: 'Adım', format: (v) => `${Math.round(v)}`, color: '#4ade80', value: (act) => stepsOf(act) },
   score: { label: 'Antrenman puanı', format: (v) => fmtNum(v, 1), color: '#4ade80' },
 };
 
@@ -263,7 +325,9 @@ function renderScoreView(id) {
     ['Ort. nabız', fmtHr(a.avgHr), HUE.hr],
     ['Maks. nabız', fmtHr(a.maxHr), HUE.hr],
     ['%HRR', r.detail.hrrRatio ? `%${Math.round(r.detail.hrrRatio * 100)}` : '—', HUE.hr],
-    ['Kalori', r.detail.kcal ? `${Math.round(r.detail.kcal)} kcal` : '—', HUE.energy],
+    ['Kalori', fmtKcal(r.detail.kcal), HUE.energy],
+    ['Net kalori', fmtKcal(r.detail.kcalNet), HUE.energy],
+    [a.steps ? 'Adım' : 'Adım (tahmini)', fmtSteps(stepsOf(a)), HUE.goal],
     ['Maks. nabız (kullanılan)', `${r.detail.maxHrUsed || '—'}${r.detail.maxHrEstimated ? ' (tahmin)' : ''}`, HUE.hr],
   ].map(([k, v, hue]) => `<div class="chip" style="--hue:${hue}"><b>${k}</b>${v}</div>`).join('');
 
@@ -327,6 +391,8 @@ function renderList() {
       [speedWord(), fmtSpeed(a.pace), HUE.speed],
       ['Ort. nabız', fmtHr(a.avgHr), HUE.hr],
       a.maxHr ? ['Maks.', fmtHr(a.maxHr), HUE.hr] : null,
+      kcalOf(a) ? ['Kalori', fmtKcal(kcalOf(a)), HUE.energy] : null,
+      stepsOf(a) ? [a.steps ? 'Adım' : 'Adım (~)', fmtSteps(stepsOf(a)), HUE.goal] : null,
       a.beatsPerKm ? ['Verim', `${Math.round(a.beatsPerKm)} atış/km`, HUE.energy] : null,
       a.effort ? ['Zorlanma', `${a.effort}/10`, HUE.walk] : null,
     ].filter(Boolean);
@@ -363,6 +429,8 @@ function renderCompare() {
   // Dönem karşılaştırması
   const days = Number($('#comparePeriod').value);
   const { current, previous } = S.periodCompare(activities, days);
+  const curList = S.inRange(activities, S.daysAgoIso(days - 1), S.daysAgoIso(-1));
+  const prevList = S.inRange(activities, S.daysAgoIso(days * 2 - 1), S.daysAgoIso(days - 1));
   const head = `<div class="cmp-row head"><span>Metrik</span><span>Son ${days}g</span><span>Önceki ${days}g</span><span style="text-align:right">Fark</span></div>`;
 
   $('#periodCompare').innerHTML = current.count === 0 && previous.count === 0
@@ -380,6 +448,10 @@ function renderCompare() {
           deltaHtml(S.delta(current.avgHr, previous.avgHr, true)), HUE.hr),
         cmpRow('Nabız verimi', beats(current.beatsPerKm), beats(previous.beatsPerKm),
           deltaHtml(S.delta(current.beatsPerKm, previous.beatsPerKm, true)), HUE.energy),
+        cmpRow('Kalori', fmtKcal(sumBy(curList, kcalOf)), fmtKcal(sumBy(prevList, kcalOf)),
+          deltaHtml(S.delta(sumBy(curList, kcalOf), sumBy(prevList, kcalOf), false)), HUE.energy),
+        cmpRow('Adım', fmtSteps(sumBy(curList, stepsOf)), fmtSteps(sumBy(prevList, stepsOf)),
+          deltaHtml(S.delta(sumBy(curList, stepsOf), sumBy(prevList, stepsOf), false)), HUE.goal),
       ].join('');
 
   // Son vs. önceki (aynı tür)
@@ -407,12 +479,18 @@ function renderCompare() {
             deltaHtml(S.delta(c.maxHr, p.maxHr, true)), HUE.hr),
           cmpRow('Nabız verimi', beats(c.beatsPerKm), beats(p.beatsPerKm),
             deltaHtml(S.delta(c.beatsPerKm, p.beatsPerKm, true)), HUE.energy),
+          cmpRow('Kalori', fmtKcal(kcalOf(c)), fmtKcal(kcalOf(p)),
+            deltaHtml(S.delta(kcalOf(c), kcalOf(p), false)), HUE.energy),
+          cmpRow('Adım', fmtSteps(stepsOf(c)), fmtSteps(stepsOf(p)),
+            deltaHtml(S.delta(stepsOf(c), stepsOf(p), false)), HUE.goal),
         ].join('');
     }
   }
 
   // Tür ortalamaları
   const t = S.typeAverages(activities);
+  const runs = activities.filter((act) => act.type === 'run');
+  const walks = activities.filter((act) => act.type === 'walk');
   $('#typeAverages').innerHTML = (t.run.count || t.walk.count)
     ? `<div class="cmp-row head"><span>Metrik</span><span>🏃 Koşu</span><span>🚶 Yürüyüş</span><span></span></div>` +
       [
@@ -421,6 +499,8 @@ function renderCompare() {
         cmpRow(`Ort. ${speedWord(false)}`, fmtSpeed(t.run.avgPace), fmtSpeed(t.walk.avgPace), '', HUE.speed),
         cmpRow('Ort. nabız', fmtHr(t.run.avgHr), fmtHr(t.walk.avgHr), '', HUE.hr),
         cmpRow('Nabız verimi', beats(t.run.beatsPerKm), beats(t.walk.beatsPerKm), '', HUE.energy),
+        cmpRow('Toplam kalori', fmtKcal(sumBy(runs, kcalOf)), fmtKcal(sumBy(walks, kcalOf)), '', HUE.energy),
+        cmpRow('Toplam adım', fmtSteps(sumBy(runs, stepsOf)), fmtSteps(sumBy(walks, stepsOf)), '', HUE.goal),
       ].join('')
     : '<p class="empty">Kayıt yok.</p>';
 }
@@ -433,7 +513,8 @@ function renderDataInfo() {
   const n = activities.length;
   const km = activities.reduce((s, a) => s + a.distanceKm, 0);
   $('#dataInfo').textContent = n
-    ? `${n} aktivite · toplam ${fmtKm(km)} · ilk kayıt ${fmtDate(activities[n - 1].date)}`
+    ? `${n} aktivite · toplam ${fmtKm(km)} · ${fmtKcal(sumBy(activities, kcalOf))}` +
+      ` · ${fmtSteps(sumBy(activities, stepsOf))} · ilk kayıt ${fmtDate(activities[n - 1].date)}`
     : 'Henüz veri yok.';
 }
 
@@ -452,6 +533,7 @@ function readForm() {
     avgHr: Number($('#f-avghr').value) || null,
     maxHr: Number($('#f-maxhr').value) || null,
     effort: Number($('#f-effort').value) || null,
+    steps: Number($('#f-steps').value) || null,
     note: $('#f-note').value.trim(),
   };
 }
@@ -479,10 +561,18 @@ function updatePreview() {
     return;
   }
   const m = S.withMetrics(a);
-  const eff = m.beatsPerKm ? ` · ${Math.round(m.beatsPerKm)} atış/km` : '';
-  out.textContent = usesKmh()
-    ? `Hız ${fmtSpeedKmh(m.speedKmh)} · tempo ${fmtPaceUnit(m.pace)}${eff}`
-    : `Tempo ${fmtPaceUnit(m.pace)} · ${fmtSpeedKmh(m.speedKmh)}${eff}`;
+  const mets = metsFor(a.type, a.distanceKm, a.durationSec);
+  const kcal = kcalFor(mets, Number(settings.weightKg), a.durationSec);
+  const steps = a.steps || S.estimateSteps(m, settings.heightCm);
+  const extra = [
+    m.beatsPerKm ? `${Math.round(m.beatsPerKm)} atış/km` : null,
+    kcal ? fmtKcal(kcal) : null,
+    steps ? `${a.steps ? '' : '~'}${fmtSteps(steps)}` : null,
+  ].filter(Boolean).join(' · ');
+  const speedPart = usesKmh()
+    ? `Hız ${fmtSpeedKmh(m.speedKmh)} · tempo ${fmtPaceUnit(m.pace)}`
+    : `Tempo ${fmtPaceUnit(m.pace)} · ${fmtSpeedKmh(m.speedKmh)}`;
+  out.textContent = extra ? `${speedPart} · ${extra}` : speedPart;
 }
 
 function resetForm() {
@@ -508,6 +598,7 @@ function fillForm(a) {
   $('#f-s').value = a.durationSec % 60;
   $('#f-avghr').value = a.avgHr || '';
   $('#f-maxhr').value = a.maxHr || '';
+  $('#f-steps').value = a.steps || '';
   $('#f-effort').value = a.effort || 5;
   $('#effortOut').value = $('#f-effort').value;
   $('#f-note').value = a.note || '';
@@ -577,6 +668,7 @@ function bind() {
     settings = store.saveSettings({
       age: Number($('#s-age').value) || null,
       weightKg: Number($('#s-weight').value) || null,
+      heightCm: Number($('#s-height').value) || null,
       sex: $('#s-sex').value === 'female' ? 'female' : 'male',
       speedUnit: $('#s-speedunit').value === 'pace' ? 'pace' : 'kmh',
       weeklyGoalKm: Number($('#s-weekly').value) || 0,
@@ -632,6 +724,7 @@ function syncSettingsForm() {
   settings = store.getSettings();
   $('#s-age').value = settings.age ?? '';
   $('#s-weight').value = settings.weightKg ?? '';
+  $('#s-height').value = settings.heightCm ?? '';
   $('#s-sex').value = settings.sex === 'female' ? 'female' : 'male';
   $('#s-speedunit').value = settings.speedUnit === 'pace' ? 'pace' : 'kmh';
   $('#s-weekly').value = settings.weeklyGoalKm ?? '';

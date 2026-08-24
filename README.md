@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.2.0
+**Sürüm:** v0.3.0
 
 ## Neler var
 
@@ -16,6 +16,10 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 - **Antrenman puanı (0–10):** her kayıt, yaşın ve kilon referans alınarak puanlanır;
   puan ekranında renkli halka, kademe adı ve puanın nasıl oluştuğunun dökümü yer alır.
   Ayrıntı için aşağıdaki *Puanlama* bölümü.
+- **Kalori ve adım:** her aktivitenin kalorisi kilonla otomatik hesaplanır; adım
+  saatinden girilebilir, girilmezse boyundan tahmin edilir. Özette haftalık kalori
+  ve adım kartları, toplam enerjinin kaç kiloya denk geldiğini gösteren motivasyon
+  kartı yer alır.
 - **Kıyas:** son 7/14/30 gün ile bir önceki eşit dönem, son aktivite vs. aynı türdeki
   bir önceki aktivite, koşu/yürüyüş ortalamaları.
 - **Nabız verimi (atış/km):** `ortalama nabız × tempo`. Aynı mesafeyi kaç kalp atışıyla
@@ -56,6 +60,26 @@ sw.js                   çevrimdışı önbellek
 manifest.webmanifest    PWA manifesti
 ```
 
+## Kalori, adım ve kilo ipucu
+
+**Kalori** ACSM metabolik denklemlerinden gelir: hız → VO2 → MET, ardından
+`kcal/dk = MET × 3,5 × kilo / 200`. İki değer tutulur:
+
+- **Brüt kalori** — seans boyunca harcanan toplam enerji (listede ve çiplerde görünen).
+- **Net kalori** — aynı sürede zaten harcayacağın dinlenme metabolizması (1 MET)
+  düşülmüş hali. Kilo eşdeğeri hesabında bu kullanılır.
+
+**Adım**, saatinden girilebilir. Girilmezse boydan tahmin edilir: adım uzunluğu
+yürüyüşte ≈ `0,415 × boy`, koşuda ≈ `0,50 × boy` (cm); hıza göre ±%20 bandında
+küçük bir düzeltme uygulanır. Boy girilmemişse yetişkin ortalaması kullanılır
+(yürüyüş 0,72 m, koşu 0,95 m). Tahmini değerler listede `(~)` ile işaretlenir.
+
+**Kilo ipucu** özet ekranındaki kartta: toplam net kalori ÷ 7.700 = kaba yağ
+eşdeğeri; çubuk bir sonraki kiloya ne kadar kaldığını gösterir. 7.700 kcal/kg
+kabulü Wishnofsky'nin 1958 tarihli hesabıdır — pratik bir kestirimdir, ölçüm
+değildir; gerçek kilo değişimi beslenmeye, su dengesine ve metabolik uyuma bağlıdır.
+Kart bunu kendi üzerinde de yazar.
+
 ## Renk sistemi
 
 Her ölçünün sabit bir rengi var; aynı renk özet kartında, listede, kıyas tablosunda,
@@ -93,6 +117,7 @@ Profil değerlerinin rolü:
 
 - **Yaş** — maksimum nabız girilmemişse Tanaka denklemiyle tahmin edilir: `208 − 0,7 × yaş`.
 - **Kilo** — kalori ve MET hesabına girer (`kcal/dk = MET × 3,5 × kg / 200`).
+- **Boy** — adım tahmininde adım uzunluğunu belirler.
 - **Dinlenme nabzı** — nabız rezervi oranının paydasında; girilmezse 60 varsayılır.
 - **Cinsiyet** — TRIMP'in üstel katsayısını belirler (erkek 0,64·e^1,92x, kadın 0,86·e^1,67x).
 
@@ -109,6 +134,8 @@ Verimli (6,5–7,9) · Güçlü (8–8,9) · Zirve (9–10).
 - Foster C. ve ark. (2001) — session-RPE yöntemi (RPE × süre)
 - ACSM metabolik denklemleri — yürüyüş/koşu VO2 ve MET hesabı
 - ACSM şiddet sınıflaması (%HRR) ve WHO/ACSM haftalık 150 dakika orta şiddet önerisi
+- Wishnofsky M. (1958) — 1 lb yağ ≈ 3.500 kcal (1 kg ≈ 7.700 kcal) kabulü
+- Adım uzunluğu için boy katsayıları (yürüyüş ≈ 0,415 × boy, koşu ≈ 0,50 × boy)
 
 > Bu puan bir sağlık ölçütü değil, antrenman geri bildirimidir. Nabız denklemleri
 > ±7–10 atım hata payı taşır; rahatsızlık halinde hekime danış.

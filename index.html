@@ -20,7 +20,7 @@
     <img src="./icons/icon.svg" alt="" width="28" height="28">
     <div>
       <h1>Koç</h1>
-      <span class="ver" id="appVersion">v0.2.0</span>
+      <span class="ver" id="appVersion">v0.3.0</span>
     </div>
   </div>
   <button class="ghost" id="installBtn" hidden>Yükle</button>
@@ -38,6 +38,7 @@
 
     <div class="grid stats" id="weekStats"></div>
     <div id="goalBar"></div>
+    <div id="fatCard"></div>
 
     <div class="card">
       <div class="card-head">
@@ -47,6 +48,8 @@
           <option value="pace">Tempo (dk/km)</option>
           <option value="avgHr">Ort. nabız</option>
           <option value="beatsPerKm">Nabız verimi (atış/km)</option>
+          <option value="kcal">Kalori</option>
+          <option value="steps">Adım</option>
           <option value="score">Antrenman puanı</option>
         </select>
       </div>
@@ -98,6 +101,11 @@
           <input type="number" id="f-maxhr" inputmode="numeric" min="30" max="240" placeholder="171">
         </label>
       </div>
+
+      <label class="field">
+        <span>Adım <small style="color:var(--muted)">— saatinden alabilirsin, boş bırakırsan tahmin edilir</small></span>
+        <input type="number" id="f-steps" inputmode="numeric" min="0" max="200000" placeholder="tahmini">
+      </label>
 
       <label class="field">
         <span>Zorlanma (1–10)</span>
@@ -182,6 +190,10 @@
           <input type="number" id="s-weight" inputmode="decimal" step="0.5" min="30" max="250" placeholder="84">
         </label>
       </div>
+      <label class="field">
+        <span>Boy (cm) <small style="color:var(--muted)">— adım tahmini için</small></span>
+        <input type="number" id="s-height" inputmode="numeric" min="120" max="230" placeholder="178">
+      </label>
       <label class="field">
         <span>Cinsiyet (TRIMP katsayısı için)</span>
         <select id="s-sex">

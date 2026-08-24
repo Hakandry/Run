@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   maxHr: null,   // boşsa yaştan tahmin edilir (Tanaka)
   age: null,
   weightKg: null,
+  heightCm: null,
   sex: 'male',
   speedUnit: 'kmh',   // 'kmh' (araç göstergesi gibi) veya 'pace' (dk/km)
 };
@@ -52,6 +53,7 @@ function cleanActivity(a) {
     avgHr: numOrNull(a.avgHr),
     maxHr: numOrNull(a.maxHr),
     effort: numOrNull(a.effort),
+    steps: numOrNull(a.steps),
     note: typeof a.note === 'string' ? a.note.slice(0, 500) : '',
     createdAt: a.createdAt || new Date().toISOString(),
   };

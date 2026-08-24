@@ -11,6 +11,29 @@ export function decorate(list) {
   return list.map(withMetrics);
 }
 
+// 1 kg yağ ≈ 7700 kcal (Wishnofsky, 1958). Kaba bir kabul; gerçek kilo kaybı
+// beslenme, su dengesi ve metabolik uyuma göre değişir.
+export const KCAL_PER_KG_FAT = 7700;
+
+// Adım tahmini. Adım uzunluğu boyla ölçeklenir (yürüyüş ≈ 0,415 × boy,
+// koşu ≈ 0,50 × boy); hıza göre küçük bir düzeltme uygulanır.
+// Saatinden gerçek adım sayısını girersen tahmin kullanılmaz.
+export function estimateSteps(activity, heightCm) {
+  if (!(activity.distanceKm > 0)) return null;
+  const running = activity.type === 'run';
+  const h = Number(heightCm);
+  const base = h >= 120 && h <= 230
+    ? (h * (running ? 0.50 : 0.415)) / 100
+    : (running ? 0.95 : 0.72);          // boy yoksa yetişkin ortalaması
+  const speedKmh = activity.speedKmh
+    || (activity.durationSec > 0 ? activity.distanceKm / (activity.durationSec / 3600) : null);
+  const reference = running ? 10 : 5;
+  const factor = speedKmh
+    ? Math.min(1.2, Math.max(0.85, 1 + 0.02 * (speedKmh - reference)))
+    : 1;
+  return Math.round((activity.distanceKm * 1000) / (base * factor));
+}
+
 export function daysAgoIso(days) {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
