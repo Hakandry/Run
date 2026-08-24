@@ -1,7 +1,9 @@
-// Rozetler iki grupta toplanır:
-//   single  — TEK BİR ANTRENMANDA koşulan mesafe (1 km'den 100 km'ye).
+// Rozetler üç grupta toplanır:
+//   single  — TEK BİR ANTRENMANDA koşulan mesafe, 10 km'ye kadar.
 //             Mesafeler birikmez: 5 x 3 km koşmak 5 km rozetini açmaz;
 //             rozeti açan şey tek çıkışta o mesafeyi tamamlamaktır.
+//   total   — 10 km üstü: biriken toplam koşu mesafesi. Her koşu eklenir,
+//             hedefler sırayla açılır.
 //   streak  — süreklilik (haftalık antrenman sayısı, üst üste aktif gün)
 //
 // Rozet verisi saklanmaz; her zaman kayıtlardan hesaplanır. Bir kaydı silersen
@@ -10,8 +12,13 @@
 export const GROUPS = [
   {
     id: 'single',
-    name: 'Mesafe',
-    desc: 'Tek bir antrenmanda koştuğun mesafe — koşular birbirine eklenmez',
+    name: 'Tek antrenman',
+    desc: 'Bir çıkışta koştuğun mesafe — koşular birbirine eklenmez',
+  },
+  {
+    id: 'total',
+    name: 'Toplam koşu',
+    desc: 'Biriken toplam koşu mesafesi — her koşun eklenir, hedefler sırayla açılır',
   },
   { id: 'streak', name: 'Süreklilik', desc: 'Antrenmanı alışkanlığa çevirmek' },
 ];
@@ -41,35 +48,51 @@ export const BADGES = [
     name: '10 km', title: 'Onluk', level: 'Amatör', color: '#a3e635',
     note: 'Pistteki 10.000 metrenin yol karşılığı; olimpik mesafe.',
   },
+  // --- 10 km üstü: biriken toplam koşu mesafesi ---
   {
-    id: 'run-15k', group: 'single', target: 15, unit: 'km',
-    name: '15 km', title: 'Uzun mesafe', level: 'Deneyimli', color: '#fbbf24',
-    note: 'Yarı maratonun dörtte üçü — uzun koşuya geçiş noktası.',
+    id: 'total-15k', group: 'total', target: 15, unit: 'km', kind: 'total',
+    name: '15 km', title: 'Yol başlangıcı', level: 'Deneyimli', color: '#fbbf24',
+    note: 'Toplamda 15 km koşu — yarı maratonun dörtte üçü kadar yol.',
   },
   {
-    id: 'run-half', group: 'single', target: 21.0975, unit: 'km',
-    name: '21,1 km', title: 'Yarı maraton', level: 'Deneyimli', color: '#fb923c',
-    note: 'Maratonun tam yarısı: 21,0975 km. Resmî yarış mesafesi.',
+    id: 'total-half', group: 'total', target: 21.0975, unit: 'km', kind: 'total',
+    name: '21,1 km', title: 'Yarı maraton yolu', level: 'Deneyimli', color: '#fb923c',
+    note: 'Toplamda yarı maraton mesafesi kadar koştun (21,0975 km).',
   },
   {
-    id: 'run-30k', group: 'single', target: 30, unit: 'km',
-    name: '30 km', title: 'Duvar provası', level: 'İleri', color: '#f97316',
-    note: 'Maraton hazırlığının kilit uzun koşusu; "duvar" burada tanınır.',
+    id: 'total-30k', group: 'total', target: 30, unit: 'km', kind: 'total',
+    name: '30 km', title: 'Otuzluk', level: 'İleri', color: '#f97316',
+    note: 'Toplamda 30 km — maraton hazırlığındaki en uzun antrenman kadar yol.',
   },
   {
-    id: 'run-marathon', group: 'single', target: 42.195, unit: 'km',
-    name: '42,2 km', title: 'Maraton', level: 'Yarışçı', color: '#fb7185',
-    note: '1908 Londra Olimpiyatları\'nda koşulan, 1921\'de resmîleşen mesafe.',
+    id: 'total-marathon', group: 'total', target: 42.195, unit: 'km', kind: 'total',
+    name: '42,2 km', title: 'Maraton mesafesi', level: 'Yarışçı', color: '#fb7185',
+    note: 'Toplamda maraton mesafesi kadar koştun: 42,195 km.',
   },
   {
-    id: 'run-50k', group: 'single', target: 50, unit: 'km',
-    name: '50 km', title: 'Ultra', level: 'Yarışçı', color: '#e879f9',
-    note: 'Ultramaratonun giriş kapısı; dünya şampiyonası düzenlenen resmî mesafe.',
+    id: 'total-50k', group: 'total', target: 50, unit: 'km', kind: 'total',
+    name: '50 km', title: 'Elli', level: 'Yarışçı', color: '#e879f9',
+    note: 'Toplamda 50 km — ultramaratonun giriş mesafesi kadar yol.',
   },
   {
-    id: 'run-100k', group: 'single', target: 100, unit: 'km',
+    id: 'total-100k', group: 'total', target: 100, unit: 'km', kind: 'total',
     name: '100 km', title: 'Yüzlük', level: 'Profesyonel', color: '#a78bfa',
-    note: '100 km Dünya Şampiyonası mesafesi — profesyonel ultra dayanıklılık.',
+    note: 'Toplamda 100 km — maraton mesafesinin yaklaşık 2,4 katı.',
+  },
+  {
+    id: 'total-250k', group: 'total', target: 250, unit: 'km', kind: 'total',
+    name: '250 km', title: 'Yol alan', level: 'Profesyonel', color: '#818cf8',
+    note: 'Toplamda 250 km — yarı maratonun yaklaşık 12 katı.',
+  },
+  {
+    id: 'total-500k', group: 'total', target: 500, unit: 'km', kind: 'total',
+    name: '500 km', title: 'Uzun yol', level: 'Profesyonel', color: '#38bdf8',
+    note: 'Toplamda 500 km — haftada 10 km ile yaklaşık bir yıllık koşu.',
+  },
+  {
+    id: 'total-1000k', group: 'total', target: 1000, unit: 'km', kind: 'total',
+    name: '1000 km', title: 'Bin kilometre', level: 'Profesyonel', color: '#2dd4bf',
+    note: 'Toplamda 1000 km — maratonun 23 katı; ciddi koşucuların yıllık hacmi.',
   },
 
   // --- Süreklilik ---
@@ -138,6 +161,17 @@ function bestStreak(activities) {
   return best;
 }
 
+// Toplam koşu mesafesinin hedefi aştığı ilk koşu (eskiden yeniye biriktirerek)
+function totalReachedOn(runs, km) {
+  const chronological = [...runs].sort((a, b) => a.date.localeCompare(b.date));
+  let sum = 0;
+  for (const a of chronological) {
+    sum += a.distanceKm;
+    if (sum >= km) return a;
+  }
+  return null;
+}
+
 function firstQualifying(runs, km) {
   const qualified = runs.filter((a) => a.distanceKm >= km);
   if (!qualified.length) return null;
@@ -148,8 +182,10 @@ function firstQualifying(runs, km) {
 
 export function badgeState(activities) {
   const runs = activities.filter((a) => a.type === 'run' && a.distanceKm > 0);
-  // Tek antrenmandaki en uzun koşu — mesafe rozetlerinin tek ölçütü budur.
+  // Tek antrenmandaki en uzun koşu — 10 km'ye kadarki rozetlerin ölçütü.
   const bestRun = runs.reduce((m, a) => Math.max(m, a.distanceKm), 0);
+  // Biriken toplam koşu mesafesi — 10 km üstü rozetlerin ölçütü.
+  const totalRunKm = runs.reduce((s, a) => s + a.distanceKm, 0);
   const week = bestWeek(activities);
   const streak = bestStreak(activities);
 
@@ -161,6 +197,9 @@ export function badgeState(activities) {
       current = week.count;
     } else if (badge.kind === 'streak') {
       current = streak.length;
+    } else if (badge.kind === 'total') {
+      current = totalRunKm;
+      activity = current >= badge.target ? totalReachedOn(runs, badge.target) : null;
     } else {
       current = bestRun;
       activity = firstQualifying(runs, badge.target);

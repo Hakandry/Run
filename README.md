@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.3.4
+**Sürüm:** v0.3.5
 
 ## Neler var
 
@@ -35,8 +35,9 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
   göre renkli noktayla işaretlenir; bir güne dokununca o günün antrenmanları altta
   listelenir, puan rozetine dokununca puan ekranı açılır. Ay başlığındaki oklarla
   aylar arasında gezinilir, üstte o ayın toplamları görünür.
-- **Hedefler ve rozetler:** iki grupta 14 rozet — tek antrenmanda mesafe (1 km'den
-  100 km'ye) ve süreklilik. Her rozette mesafenin neye denk geldiğini
+- **Hedefler ve rozetler:** üç grupta 17 rozet — 10 km'ye kadar tek antrenmanda
+  mesafe, 10 km üstü biriken toplam koşu mesafesi ve süreklilik. Her rozette
+  mesafenin neye denk geldiğini
   anlatan kısa bir not ve kademe etiketi (Başlangıç → Profesyonel) bulunur. Kilitli
   rozetler ilerleme çubuğu ve kalanı gösterir; yeni rozet kazandıran bir kayıt
   girildiğinde puan ekranının üstünde kutlama şeridi çıkar.
@@ -105,11 +106,15 @@ Kart bunu kendi üzerinde de yazar.
 Rozetler saklanmaz; her açılışta kayıtlardan hesaplanır. Bir kaydı silersen ya da
 düzeltirsen rozet durumu da kendiliğinden düzelir.
 
-**Mesafe rozetlerinin tek ölçütü, tek bir antrenmanda koşulan mesafedir.** Koşular
-birikmez: beş kez 3 km koşmak (toplam 15 km) 5 km rozetini açmaz; rozeti açan şey
-tek çıkışta o mesafeyi tamamlamaktır. Rozeti, hedefi ilk kez geçen koşu kazandırır.
+Ölçüt mesafeye göre ikiye ayrılır:
 
-**Mesafe — tek bir antrenmanda koşu** (yürüyüşler sayılmaz)
+- **10 km'ye kadar → tek antrenman.** Koşular birbirine eklenmez; beş kez 3 km koşmak
+  (toplam 15 km) 5 km rozetini açmaz. Rozeti, hedefi tek çıkışta ilk kez geçen koşu
+  kazandırır.
+- **10 km üstü → biriken toplam koşu mesafesi.** Her koşun eklenir, hedefler sırayla
+  açılır. Yalnızca koşu türündeki kayıtlar sayılır; yürüyüşler bu gruba girmez.
+
+**Tek antrenman** (bir çıkışta koşulan mesafe)
 
 | Rozet | Hedef | Kademe | Not |
 |---|---|---|---|
@@ -117,12 +122,20 @@ tek çıkışta o mesafeyi tamamlamaktır. Rozeti, hedefi ilk kez geçen koşu k
 | Üç bin | 3 km | Başlangıç | Kulüp yarışlarının giriş mesafesi; pistte 7,5 tur |
 | Beşlik | 5 km | Amatör | Parkrun mesafesi |
 | Onluk | 10 km | Amatör | Pistteki 10.000 m'nin yol karşılığı |
-| Uzun mesafe | 15 km | Deneyimli | Yarı maratonun dörtte üçü |
-| Yarı maraton | 21,1 km | Deneyimli | Maratonun tam yarısı (21,0975 km) |
-| Duvar provası | 30 km | İleri | Maraton hazırlığının kilit uzun koşusu |
-| Maraton | 42,2 km | Yarışçı | 1908 Londra'da koşulan, 1921'de resmîleşen mesafe |
-| Ultra | 50 km | Yarışçı | Ultramaratonun giriş kapısı |
-| Yüzlük | 100 km | Profesyonel | 100 km Dünya Şampiyonası mesafesi |
+
+**Toplam koşu** (biriken mesafe, sırayla açılır)
+
+| Rozet | Hedef | Kademe | Not |
+|---|---|---|---|
+| Yol başlangıcı | 15 km | Deneyimli | Yarı maratonun dörtte üçü kadar yol |
+| Yarı maraton yolu | 21,1 km | Deneyimli | Toplamda yarı maraton mesafesi |
+| Otuzluk | 30 km | İleri | Maraton hazırlığındaki en uzun antrenman kadar |
+| Maraton mesafesi | 42,2 km | Yarışçı | Toplamda 42,195 km |
+| Elli | 50 km | Yarışçı | Ultramaratonun giriş mesafesi kadar |
+| Yüzlük | 100 km | Profesyonel | Maratonun ~2,4 katı |
+| Yol alan | 250 km | Profesyonel | Yarı maratonun ~12 katı |
+| Uzun yol | 500 km | Profesyonel | Haftada 10 km ile ~bir yıl |
+| Bin kilometre | 1000 km | Profesyonel | Maratonun 23 katı |
 
 **Süreklilik** (koşu + yürüyüş)
 
@@ -135,6 +148,7 @@ tek çıkışta o mesafeyi tamamlamaktır. Rozeti, hedefi ilk kez geçen koşu k
 
 Süreklilik rozetlerinde "en yoğun hafta" ve "en uzun seri" tüm geçmiş taranarak
 bulunur; kazanıldığında hangi hafta ya da hangi tarih aralığı olduğunu da yazar.
+Toplam koşu rozetlerinde ise hedefi aştığın koşunun tarihi gösterilir.
 
 ## Renk sistemi
 

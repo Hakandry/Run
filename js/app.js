@@ -11,7 +11,7 @@ import {
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.3.4';
+const APP_VERSION = '0.3.5';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -671,6 +671,7 @@ function badgeProgressText(state) {
   const { badge, remaining } = state;
   if (badge.kind === 'weekly') return `${Math.ceil(remaining)} antrenman daha`;
   if (badge.kind === 'streak') return `${Math.ceil(remaining)} gün daha`;
+  if (badge.kind === 'total') return `Toplamda ${fmtKm(remaining)} daha`;
   return `Tek koşuda ${fmtKm(remaining)} daha`;
 }
 
@@ -681,6 +682,9 @@ function badgeEarnedText(state) {
   }
   if (badge.kind === 'streak') {
     return `En uzun serin: ${current} gün<br>${fmtDate(context.start)} – ${fmtDate(context.end)}`;
+  }
+  if (badge.kind === 'total') {
+    return `${fmtDate(activity.date)} koşusunda aştın<br>toplam ${fmtKm(current)}`;
   }
   return `${fmtDate(activity.date)}<br>${fmtKm(activity.distanceKm)} · ${fmtDuration(activity.durationSec)}`;
 }
@@ -723,9 +727,8 @@ function renderBadges() {
             <div class="btitle">${badge.title}</div>
             <div class="blevel">${badge.level}</div>
             <div class="bnote">${badge.note}</div>
-            ${badge.group === 'single'
-              ? '<div class="bcrit">Tek antrenmanda</div>'
-              : ''}
+            ${badge.group === 'single' ? '<div class="bcrit">Tek antrenmanda</div>' : ''}
+            ${badge.group === 'total' ? '<div class="bcrit">Biriken toplam</div>' : ''}
             ${on
               ? `<div class="earned-tag">Kazanıldı</div>
                  <div class="bmeta">${badgeEarnedText(state)}</div>`
