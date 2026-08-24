@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.1.1
+**Sürüm:** v0.2.0
 
 ## Neler var
 
@@ -55,6 +55,26 @@ js/format.js            tr-TR biçimlendiriciler
 sw.js                   çevrimdışı önbellek
 manifest.webmanifest    PWA manifesti
 ```
+
+## Renk sistemi
+
+Her ölçünün sabit bir rengi var; aynı renk özet kartında, listede, kıyas tablosunda,
+rekorlarda ve grafikte aynı şeyi gösteriyor:
+
+| Renk | Anlamı |
+|---|---|
+| Turkuaz `--run` | Koşu |
+| Yeşil `--walk` | Yürüyüş |
+| Açık mavi `--dist` | Mesafe |
+| Mor `--time` | Süre |
+| Amber `--speed` | Hız / tempo |
+| Mercan `--hr` | Nabız |
+| Turuncu `--energy` | Enerji, nabız verimi |
+| Zümrüt `--goal` | Haftalık hedef |
+
+Puan ekranındaki renkler bundan bağımsızdır: orada renk kademeyi gösterir
+(Çok hafif → Zirve). Liste kartlarının sol şeridi ve başlığı aktivite türünün,
+puan rozeti ise kademenin rengini alır. Sekme çubuğunda her sekmenin kendi rengi vardır.
 
 ## Puanlama
 

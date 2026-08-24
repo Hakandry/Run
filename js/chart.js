@@ -43,6 +43,8 @@ export function renderChart(container, points, opts = {}) {
   const x = (i) => pad.left + (valid.length === 1 ? innerW / 2 : (i / (valid.length - 1)) * innerW);
   const y = (v) => pad.top + innerH - ((v - min) / (max - min)) * innerH;
 
+  const color = opts.color || '#22d3ee';
+
   const svg = el('svg', {
     viewBox: `0 0 ${W} ${H}`,
     role: 'img',
@@ -69,15 +71,15 @@ export function renderChart(container, points, opts = {}) {
   const area = `${line} L${x(valid.length - 1).toFixed(1)},${pad.top + innerH} L${x(0).toFixed(1)},${pad.top + innerH} Z`;
 
   const grad = el('linearGradient', { id: 'chartFill', x1: 0, y1: 0, x2: 0, y2: 1 });
-  grad.append(el('stop', { offset: '0', 'stop-color': '#22d3ee', 'stop-opacity': '0.28' }));
-  grad.append(el('stop', { offset: '1', 'stop-color': '#22d3ee', 'stop-opacity': '0' }));
+  grad.append(el('stop', { offset: '0', 'stop-color': color, 'stop-opacity': '0.32' }));
+  grad.append(el('stop', { offset: '1', 'stop-color': color, 'stop-opacity': '0' }));
   const defs = el('defs');
   defs.append(grad);
   svg.append(defs);
 
   svg.append(el('path', { d: area, fill: 'url(#chartFill)' }));
   svg.append(el('path', {
-    d: line, fill: 'none', stroke: '#22d3ee',
+    d: line, fill: 'none', stroke: color,
     'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
   }));
 
@@ -86,6 +88,7 @@ export function renderChart(container, points, opts = {}) {
     const c = el('circle', {
       cx: x(i), cy: y(p.value), r: 4.5,
       fill: p.type === 'walk' ? '#4ade80' : '#22d3ee',
+      // nokta rengi türü, çizgi rengi metriği gösterir
       stroke: '#0f1115', 'stroke-width': 2,
     });
     c.append(el('title', {}, `${fmtDateShort(p.date)} · ${opts.format ? opts.format(p.value) : p.value}`));

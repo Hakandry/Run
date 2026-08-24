@@ -7,7 +7,7 @@ import {
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.1.1';
+const APP_VERSION = '0.2.0';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -37,6 +37,12 @@ function toast(msg) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { t.hidden = true; }, 2400);
 }
+
+// Metrik renkleri (CSS değişkenleriyle aynı sözlük)
+const HUE = {
+  run: 'var(--run)', walk: 'var(--walk)', dist: 'var(--dist)', time: 'var(--time)',
+  speed: 'var(--speed)', hr: 'var(--hr)', energy: 'var(--energy)', goal: 'var(--goal)',
+};
 
 /* ---------- Hız gösterimi ---------- */
 // Tüm hız değerleri tek yerden geçer; ayardaki birime göre km/sa ya da dk/km.
@@ -73,13 +79,15 @@ function deltaHtml(d, format) {
   return `<span class="${d.dir}">${arrow} ${fmtPercent(d.pct)}${extra}</span>`;
 }
 
-function statCard(key, value, deltaNode) {
-  return `<div class="stat"><div class="k">${key}</div><div class="v">${value}</div>` +
+function statCard(key, value, deltaNode, hue) {
+  return `<div class="stat"${hue ? ` style="--hue:${hue}"` : ''}>` +
+         `<div class="k">${key}</div><div class="v">${value}</div>` +
          `<div class="d">${deltaNode || '<span class="flat">—</span>'}</div></div>`;
 }
 
-function cmpRow(label, cur, prev, d) {
-  return `<div class="cmp-row"><span class="label">${label}</span><span>${cur}</span>` +
+function cmpRow(label, cur, prev, d, hue) {
+  return `<div class="cmp-row"${hue ? ` style="--hue:${hue}"` : ''}>` +
+         `<span class="label">${label}</span><span>${cur}</span>` +
          `<span class="flat">${prev}</span><span class="delta">${d}</span></div>`;
 }
 
@@ -117,18 +125,30 @@ function renderSummary() {
   const scoreStat = recentScore();
   $('#weekStats').innerHTML = [
     statCard('Bu hafta mesafe', fmtKm(thisWeek.totalKm),
-      deltaHtml(S.delta(thisWeek.totalKm, lastWeek.totalKm, false))),
+      deltaHtml(S.delta(thisWeek.totalKm, lastWeek.totalKm, false)), HUE.dist),
     statCard('Bu hafta süre', thisWeek.totalSec > 0 ? fmtDuration(thisWeek.totalSec) : '0:00',
-      deltaHtml(S.delta(thisWeek.totalSec, lastWeek.totalSec, false))),
+      deltaHtml(S.delta(thisWeek.totalSec, lastWeek.totalSec, false)), HUE.time),
     statCard(`Ort. ${speedWord(false)}`, fmtSpeed(thisWeek.avgPace),
-      deltaHtml(speedDelta(thisWeek.avgPace, lastWeek.avgPace))),
+      deltaHtml(speedDelta(thisWeek.avgPace, lastWeek.avgPace)), HUE.speed),
     statCard('Ort. nabız', fmtHr(thisWeek.avgHr),
-      deltaHtml(S.delta(thisWeek.avgHr, lastWeek.avgHr, true))),
+      deltaHtml(S.delta(thisWeek.avgHr, lastWeek.avgHr, true)), HUE.hr),
     ...(scoreStat ? [scoreStat] : []),
-  ].join('') + (goalPct !== null
-    ? statCard('Haftalık hedef', `%${fmtNum(goalPct, 0)}`,
-        `<span class="${goalPct >= 100 ? 'up' : 'flat'}">${fmtKm(thisWeek.totalKm)} / ${goal} km</span>`)
-    : '');
+  ].join('');
+
+  // Haftalık hedef: yüzde yerine dolan çubuk
+  $('#goalBar').innerHTML = goalPct === null ? '' : `
+    <div class="goal">
+      <div class="goal-head">
+        <span>Haftalık hedef</span>
+        <b>${fmtKm(thisWeek.totalKm)} / ${goal} km</b>
+      </div>
+      <div class="goal-bar${goalPct >= 100 ? ' done' : ''}">
+        <i style="width:${Math.min(100, goalPct)}%"></i>
+      </div>
+      <div class="goal-note">${goalPct >= 100
+        ? `Hedefi %${fmtNum(goalPct - 100, 0)} aşarak tamamladın.`
+        : `Hedefe ${fmtKm(goal - thisWeek.totalKm)} kaldı · %${fmtNum(goalPct, 0)}`}</div>
+    </div>`;
 
   renderMetricChart();
   renderRecords();
@@ -141,22 +161,23 @@ function recentScore() {
   if (!recent.length) return null;
   const avg = recent.reduce((sum, a) => sum + scores.get(a.id).score, 0) / recent.length;
   const tier = scores.get(recent[0].id).tier;
-  return `<div class="stat" style="--tier-color:${tier.color}">` +
+  return `<div class="stat" style="--tier-color:${tier.color};--hue:${tier.color}">` +
     `<div class="k">Son 30 gün ort. puan</div>` +
     `<div class="v tinted">${fmtNum(avg, 1)}</div>` +
     `<div class="d"><span class="flat">son antrenman ${fmtNum(scores.get(recent[0].id).score, 1)} · ${tier.name}</span></div></div>`;
 }
 
 const CHART_FORMATTERS = {
-  distanceKm: { label: 'Mesafe', format: (v) => fmtNum(v, 1) },
+  distanceKm: { label: 'Mesafe', format: (v) => fmtNum(v, 1), color: '#38bdf8' },
   pace: {
     label: () => speedWord(),
     format: (v) => (usesKmh() ? fmtNum(v, 1) : fmtPace(v)),
     value: (a) => (usesKmh() ? paceToKmh(a.pace) : a.pace),
+    color: '#fbbf24',
   },
-  avgHr: { label: 'Ort. nabız', format: (v) => `${Math.round(v)}` },
-  beatsPerKm: { label: 'Nabız verimi', format: (v) => `${Math.round(v)}` },
-  score: { label: 'Antrenman puanı', format: (v) => fmtNum(v, 1) },
+  avgHr: { label: 'Ort. nabız', format: (v) => `${Math.round(v)}`, color: '#fb7185' },
+  beatsPerKm: { label: 'Nabız verimi', format: (v) => `${Math.round(v)}`, color: '#a78bfa' },
+  score: { label: 'Antrenman puanı', format: (v) => fmtNum(v, 1), color: '#4ade80' },
 };
 
 function renderMetricChart() {
@@ -180,17 +201,18 @@ function renderMetricChart() {
 function renderRecords() {
   const pr = S.personalRecords(activities);
   const rows = [
-    ['En uzun mesafe', pr.longest, (a) => fmtKm(a.distanceKm)],
-    [usesKmh() ? 'En yüksek hız (1 km+)' : 'En hızlı tempo (1 km+)', pr.fastest, (a) => fmtSpeed(a.pace)],
-    ['En uzun süre', pr.longestTime, (a) => fmtDuration(a.durationSec)],
-    ['En düşük ort. nabız', pr.lowestHr, (a) => fmtHr(a.avgHr)],
-    ['En iyi nabız verimi', pr.bestEfficiency, (a) => `${Math.round(a.beatsPerKm)} atış/km`],
+    ['En uzun mesafe', pr.longest, (a) => fmtKm(a.distanceKm), HUE.dist],
+    [usesKmh() ? 'En yüksek hız (1 km+)' : 'En hızlı tempo (1 km+)', pr.fastest, (a) => fmtSpeed(a.pace), HUE.speed],
+    ['En uzun süre', pr.longestTime, (a) => fmtDuration(a.durationSec), HUE.time],
+    ['En düşük ort. nabız', pr.lowestHr, (a) => fmtHr(a.avgHr), HUE.hr],
+    ['En iyi nabız verimi', pr.bestEfficiency, (a) => `${Math.round(a.beatsPerKm)} atış/km`, HUE.energy],
   ].filter(([, a]) => a);
 
   $('#records').innerHTML = rows.length
-    ? rows.map(([k, a, f]) =>
-        `<div class="record"><span class="k">${k}</span>` +
-        `<span><span class="v">${f(a)}</span> <span class="when">${TYPE_ICON[a.type]} ${fmtDate(a.date)}</span></span></div>`).join('')
+    ? rows.map(([k, a, f, hue]) =>
+        `<div class="record" style="--hue:${hue}"><span class="k">${k}</span>` +
+        `<span class="side"><span class="v">${f(a)}</span>` +
+        `<span class="when">${TYPE_ICON[a.type]} ${fmtDate(a.date)}</span></span></div>`).join('')
     : '<p class="empty">Rekorlar için önce birkaç aktivite ekle.</p>';
 }
 
@@ -235,15 +257,15 @@ function renderScoreView(id) {
   }).join('');
 
   const chips = [
-    ['Mesafe', fmtKm(a.distanceKm)],
-    ['Süre', fmtDuration(a.durationSec)],
-    [speedWord(), fmtSpeed(a.pace)],
-    ['Ort. nabız', fmtHr(a.avgHr)],
-    ['Maks. nabız', fmtHr(a.maxHr)],
-    ['%HRR', r.detail.hrrRatio ? `%${Math.round(r.detail.hrrRatio * 100)}` : '—'],
-    ['Kalori', r.detail.kcal ? `${Math.round(r.detail.kcal)} kcal` : '—'],
-    ['Maks. nabız (kullanılan)', `${r.detail.maxHrUsed || '—'}${r.detail.maxHrEstimated ? ' (tahmin)' : ''}`],
-  ].map(([k, v]) => `<div class="chip"><b>${k}</b>${v}</div>`).join('');
+    ['Mesafe', fmtKm(a.distanceKm), HUE.dist],
+    ['Süre', fmtDuration(a.durationSec), HUE.time],
+    [speedWord(), fmtSpeed(a.pace), HUE.speed],
+    ['Ort. nabız', fmtHr(a.avgHr), HUE.hr],
+    ['Maks. nabız', fmtHr(a.maxHr), HUE.hr],
+    ['%HRR', r.detail.hrrRatio ? `%${Math.round(r.detail.hrrRatio * 100)}` : '—', HUE.hr],
+    ['Kalori', r.detail.kcal ? `${Math.round(r.detail.kcal)} kcal` : '—', HUE.energy],
+    ['Maks. nabız (kullanılan)', `${r.detail.maxHrUsed || '—'}${r.detail.maxHrEstimated ? ' (tahmin)' : ''}`, HUE.hr],
+  ].map(([k, v, hue]) => `<div class="chip" style="--hue:${hue}"><b>${k}</b>${v}</div>`).join('');
 
   box.innerHTML = `
     <div class="score-card" style="${style}">
@@ -300,17 +322,17 @@ function renderList() {
 
   box.innerHTML = list.map((a) => {
     const metrics = [
-      ['Mesafe', fmtKm(a.distanceKm)],
-      ['Süre', fmtDuration(a.durationSec)],
-      [speedWord(), fmtSpeed(a.pace)],
-      ['Ort. nabız', fmtHr(a.avgHr)],
-      a.maxHr ? ['Maks.', fmtHr(a.maxHr)] : null,
-      a.beatsPerKm ? ['Verim', `${Math.round(a.beatsPerKm)} atış/km`] : null,
-      a.effort ? ['Zorlanma', `${a.effort}/10`] : null,
+      ['Mesafe', fmtKm(a.distanceKm), HUE.dist],
+      ['Süre', fmtDuration(a.durationSec), HUE.time],
+      [speedWord(), fmtSpeed(a.pace), HUE.speed],
+      ['Ort. nabız', fmtHr(a.avgHr), HUE.hr],
+      a.maxHr ? ['Maks.', fmtHr(a.maxHr), HUE.hr] : null,
+      a.beatsPerKm ? ['Verim', `${Math.round(a.beatsPerKm)} atış/km`, HUE.energy] : null,
+      a.effort ? ['Zorlanma', `${a.effort}/10`, HUE.walk] : null,
     ].filter(Boolean);
 
     const r = scores.get(a.id);
-    return `<article class="item" data-id="${a.id}">
+    return `<article class="item" data-id="${a.id}" style="--type-color:${a.type === 'walk' ? HUE.walk : HUE.run}">
       <div class="item-head">
         <span class="item-title">${TYPE_ICON[a.type]} ${TYPE_LABEL[a.type]}</span>
         <span class="item-date">${fmtDate(a.date)}</span>
@@ -321,7 +343,8 @@ function renderList() {
           ${fmtNum(r.score, 1)} <small>${r.tier.name}</small>
         </button>
       </div>
-      <div class="item-metrics">${metrics.map(([k, v]) => `<span><b>${k}</b> ${v}</span>`).join('')}</div>
+      <div class="item-metrics">${metrics
+        .map(([k, v, hue]) => `<span data-hue style="--hue:${hue}"><b>${k}</b> ${v}</span>`).join('')}</div>
       ${a.note ? `<p class="item-note">${escapeHtml(a.note)}</p>` : ''}
       <div class="item-actions">
         <button class="ghost" data-act="edit">Düzenle</button>
@@ -346,17 +369,17 @@ function renderCompare() {
     ? '<p class="empty">Bu dönemde kayıt yok.</p>'
     : head + [
         cmpRow('Aktivite', current.count, previous.count,
-          deltaHtml(S.delta(current.count, previous.count, false))),
+          deltaHtml(S.delta(current.count, previous.count, false)), HUE.walk),
         cmpRow('Mesafe', fmtKm(current.totalKm), fmtKm(previous.totalKm),
-          deltaHtml(S.delta(current.totalKm, previous.totalKm, false))),
+          deltaHtml(S.delta(current.totalKm, previous.totalKm, false)), HUE.dist),
         cmpRow('Süre', fmtDuration(current.totalSec), fmtDuration(previous.totalSec),
-          deltaHtml(S.delta(current.totalSec, previous.totalSec, false))),
+          deltaHtml(S.delta(current.totalSec, previous.totalSec, false)), HUE.time),
         cmpRow(`Ort. ${speedWord(false)}`, fmtSpeed(current.avgPace), fmtSpeed(previous.avgPace),
-          deltaHtml(speedDelta(current.avgPace, previous.avgPace))),
+          deltaHtml(speedDelta(current.avgPace, previous.avgPace)), HUE.speed),
         cmpRow('Ort. nabız', fmtHr(current.avgHr), fmtHr(previous.avgHr),
-          deltaHtml(S.delta(current.avgHr, previous.avgHr, true))),
+          deltaHtml(S.delta(current.avgHr, previous.avgHr, true)), HUE.hr),
         cmpRow('Nabız verimi', beats(current.beatsPerKm), beats(previous.beatsPerKm),
-          deltaHtml(S.delta(current.beatsPerKm, previous.beatsPerKm, true))),
+          deltaHtml(S.delta(current.beatsPerKm, previous.beatsPerKm, true)), HUE.energy),
       ].join('');
 
   // Son vs. önceki (aynı tür)
@@ -373,17 +396,17 @@ function renderCompare() {
         `<div class="cmp-row head"><span>Metrik</span><span>${fmtDate(c.date)}</span><span>${fmtDate(p.date)}</span><span style="text-align:right">Fark</span></div>` +
         [
           cmpRow('Mesafe', fmtKm(c.distanceKm), fmtKm(p.distanceKm),
-            deltaHtml(S.delta(c.distanceKm, p.distanceKm, false))),
+            deltaHtml(S.delta(c.distanceKm, p.distanceKm, false)), HUE.dist),
           cmpRow('Süre', fmtDuration(c.durationSec), fmtDuration(p.durationSec),
-            deltaHtml(S.delta(c.durationSec, p.durationSec, false))),
+            deltaHtml(S.delta(c.durationSec, p.durationSec, false)), HUE.time),
           cmpRow(speedWord(), fmtSpeed(c.pace), fmtSpeed(p.pace),
-            deltaHtml(speedDelta(c.pace, p.pace))),
+            deltaHtml(speedDelta(c.pace, p.pace)), HUE.speed),
           cmpRow('Ort. nabız', fmtHr(c.avgHr), fmtHr(p.avgHr),
-            deltaHtml(S.delta(c.avgHr, p.avgHr, true))),
+            deltaHtml(S.delta(c.avgHr, p.avgHr, true)), HUE.hr),
           cmpRow('Maks. nabız', fmtHr(c.maxHr), fmtHr(p.maxHr),
-            deltaHtml(S.delta(c.maxHr, p.maxHr, true))),
+            deltaHtml(S.delta(c.maxHr, p.maxHr, true)), HUE.hr),
           cmpRow('Nabız verimi', beats(c.beatsPerKm), beats(p.beatsPerKm),
-            deltaHtml(S.delta(c.beatsPerKm, p.beatsPerKm, true))),
+            deltaHtml(S.delta(c.beatsPerKm, p.beatsPerKm, true)), HUE.energy),
         ].join('');
     }
   }
@@ -393,11 +416,11 @@ function renderCompare() {
   $('#typeAverages').innerHTML = (t.run.count || t.walk.count)
     ? `<div class="cmp-row head"><span>Metrik</span><span>🏃 Koşu</span><span>🚶 Yürüyüş</span><span></span></div>` +
       [
-        cmpRow('Aktivite', t.run.count, t.walk.count, ''),
-        cmpRow('Toplam mesafe', fmtKm(t.run.totalKm), fmtKm(t.walk.totalKm), ''),
-        cmpRow(`Ort. ${speedWord(false)}`, fmtSpeed(t.run.avgPace), fmtSpeed(t.walk.avgPace), ''),
-        cmpRow('Ort. nabız', fmtHr(t.run.avgHr), fmtHr(t.walk.avgHr), ''),
-        cmpRow('Nabız verimi', beats(t.run.beatsPerKm), beats(t.walk.beatsPerKm), ''),
+        cmpRow('Aktivite', t.run.count, t.walk.count, '', HUE.walk),
+        cmpRow('Toplam mesafe', fmtKm(t.run.totalKm), fmtKm(t.walk.totalKm), '', HUE.dist),
+        cmpRow(`Ort. ${speedWord(false)}`, fmtSpeed(t.run.avgPace), fmtSpeed(t.walk.avgPace), '', HUE.speed),
+        cmpRow('Ort. nabız', fmtHr(t.run.avgHr), fmtHr(t.walk.avgHr), '', HUE.hr),
+        cmpRow('Nabız verimi', beats(t.run.beatsPerKm), beats(t.walk.beatsPerKm), '', HUE.energy),
       ].join('')
     : '<p class="empty">Kayıt yok.</p>';
 }
