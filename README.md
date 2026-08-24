@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.0.1
+**Sürüm:** v0.0.2
 
 ## Neler var
 
@@ -49,9 +49,17 @@ sw.js                   çevrimdışı önbellek
 manifest.webmanifest    PWA manifesti
 ```
 
+## Güncelleme
+
+Yeni sürüm `main` dalına gönderildiğinde GitHub Pages 1–2 dakika içinde yayınlar.
+Ana ekrandaki uygulama bunu kendi yakalar: service worker güncellemeyi görünce
+"Yeni sürüm hazır" der ve sayfayı bir kez yeniler. Uygulama açıkken saatte bir ve
+uygulamaya her geri dönüldüğünde kontrol edilir. Her sürümde `sw.js` içindeki
+`VERSION` sabiti yükseltilmelidir — eski önbellek o sayede temizlenir.
+
 ## Yol haritası (sonraki sürümler)
 
-- v0.0.2 — hafta/ay bazlı takvim görünümü, aktivite başına etiket
-- v0.0.3 — GPS ile canlı kayıt (mesafe/süre otomatik)
-- v0.0.4 — nabız bölgeleri (dinlenme/maks. nabza göre) ve bölge dağılımı
-- v0.0.5 — hedef planlama (5K/10K hazırlık) ve haftalık program önerisi
+- v0.0.3 — hafta/ay bazlı takvim görünümü, aktivite başına etiket
+- v0.0.4 — GPS ile canlı kayıt (mesafe/süre otomatik)
+- v0.0.5 — nabız bölgeleri (dinlenme/maks. nabza göre) ve bölge dağılımı
+- v0.0.6 — hedef planlama (5K/10K hazırlık) ve haftalık program önerisi

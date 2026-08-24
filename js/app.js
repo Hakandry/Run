@@ -6,7 +6,7 @@ import {
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.0.1';
+const APP_VERSION = '0.0.2';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -441,8 +441,29 @@ function setupInstall() {
 
 function registerSw() {
   if (!('serviceWorker' in navigator)) return;
+  let reloading = false;
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => { /* offline desteği yok, sorun değil */ });
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      // Yeni sürüm yüklendiğinde kullanıcıya haber ver ve bir kez yenile.
+      reg.addEventListener('updatefound', () => {
+        const worker = reg.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state !== 'installed' || !navigator.serviceWorker.controller) return;
+          if (reloading) return;
+          reloading = true;
+          toast('Yeni sürüm hazır, yenileniyor…');
+          setTimeout(() => location.reload(), 1500);
+        });
+      });
+      // Uygulama uzun süre açık kalırsa saatte bir güncelleme kontrolü.
+      setInterval(() => reg.update(), 60 * 60 * 1000);
+      // Uygulamaya geri dönüldüğünde de kontrol et.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+    }).catch(() => { /* offline desteği yok, sorun değil */ });
   });
 }
 

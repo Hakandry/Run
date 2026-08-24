@@ -1,5 +1,5 @@
 // Basit önbellek: uygulama kabuğu offline çalışsın.
-const VERSION = 'koc-v0.0.1';
+const VERSION = 'koc-v0.0.2';
 const ASSETS = [
   './',
   './index.html',
@@ -44,15 +44,18 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Diğer dosyalarda: önbellekten ver, arka planda tazele (stale-while-revalidate).
+  // Böylece yeni sürüm, service worker güncellenmese bile bir sonraki açılışta gelir.
   e.respondWith(
-    caches.match(request).then((cached) =>
-      cached || fetch(request).then((res) => {
+    caches.match(request).then((cached) => {
+      const network = fetch(request).then((res) => {
         if (res.ok) {
           const copy = res.clone();
           caches.open(VERSION).then((c) => c.put(request, copy));
         }
         return res;
-      })
-    )
+      }).catch(() => cached);
+      return cached || network;
+    })
   );
 });
