@@ -1,5 +1,5 @@
 // Basit önbellek: uygulama kabuğu offline çalışsın.
-const VERSION = 'paceup-v0.3.6';
+const VERSION = 'paceup-v0.3.7';
 const ASSETS = [
   './',
   './index.html',

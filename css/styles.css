@@ -197,6 +197,36 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
   width: 84px; padding: 6px 9px; font-size: 0.82rem; border-radius: 999px; text-align: center;
 }
 
+/* Profil ipuçları ve eksiklik listesi */
+.hint { font-size: 0.7rem; color: var(--muted); line-height: 1.4; }
+.profile-status {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px; display: grid; gap: 8px; background: var(--surface-2);
+}
+.profile-status .ptitle {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.85rem; font-weight: 650;
+}
+.profile-status .ptitle b { color: var(--goal); font-variant-numeric: tabular-nums; }
+.profile-row {
+  display: grid; grid-template-columns: 16px 1fr; gap: 8px;
+  font-size: 0.78rem; color: var(--muted); align-items: start;
+}
+.profile-row .tick { color: var(--goal); }
+.profile-row.missing .tick { color: var(--warn); }
+.profile-row b { color: var(--text); font-weight: 600; }
+
+.cta {
+  display: grid; gap: 10px; margin-bottom: 14px; padding: 13px 14px;
+  border: 1px solid #4a4030; border-radius: var(--radius);
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgba(251, 191, 36, 0.16), transparent 60%),
+    var(--surface);
+}
+.cta .ctitle { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--warn); }
+.cta p { margin: 0; font-size: 0.85rem; line-height: 1.5; }
+.cta .missing-list { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
 /* Kalori → kilo ipucu */
 .fat {
   display: grid; gap: 10px; margin-bottom: 14px; padding: 14px;

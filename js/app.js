@@ -3,6 +3,7 @@ import * as S from './stats.js';
 import { renderChart } from './chart.js';
 import {
   scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr, metsFor, kcalFor,
+  restingKcalPerDay,
 } from './score.js';
 import { badgeState, earnedIds, newlyEarned, GROUPS, LEVELS } from './badges.js';
 import { renderMonth, monthLabel, monthRange } from './calendar.js';
@@ -11,7 +12,7 @@ import {
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.3.6';
+const APP_VERSION = '0.3.7';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -108,6 +109,8 @@ function refresh() {
   renderCompare();
   renderCalendar();
   renderBadges();
+  renderProfileStatus();
+  renderProfileCta();
   renderDataInfo();
 }
 
@@ -130,6 +133,19 @@ const fmtKcal = (v) => (Number.isFinite(v) && v >= 0 ? `${Math.round(v).toLocale
 function sumBy(list, fn) {
   return list.reduce((sum, act) => sum + (Number(fn(act)) || 0), 0);
 }
+
+// Ayarlardaki her profil alanı ve hesaplarda neyi etkilediği.
+const PROFILE_FIELDS = [
+  { key: 'age', label: 'Yaş', effect: 'maks. nabız tahmini ve metabolizma', essential: true },
+  { key: 'weightKg', label: 'Kilo', effect: 'kalori ve MET hesabı', essential: true },
+  { key: 'heightCm', label: 'Boy', effect: 'adım tahmini ve metabolizma', essential: true },
+  { key: 'restHr', label: 'Dinlenme nabzı', effect: 'nabız rezervi, yük ve şiddet', essential: true },
+  { key: 'maxHr', label: 'Ölçülmüş maks. nabız', effect: 'nabız rezervi (yoksa yaştan tahmin)', essential: false },
+  { key: 'bodyFatPct', label: 'Vücut yağ oranı', effect: 'net kaloriyi Katch-McArdle ile hesaplar', essential: false },
+  { key: 'vo2max', label: 'VO2max', effect: 'nabızsız antrenmanlarda şiddet tahmini', essential: false },
+];
+
+const profileMissing = () => PROFILE_FIELDS.filter((f) => !Number(settings[f.key]));
 
 function profileReady() {
   return Boolean(Number(settings.age) && Number(settings.weightKg));
@@ -331,10 +347,13 @@ const PART_DETAIL = (r, a) => ({
     : `Banister TRIMP: ${Math.round(r.detail.trimp)} birim`,
   intensity: r.detail.zone
     ? `Nabız rezervinin %${Math.round(r.detail.hrrRatio * 100)} seviyesi · ${r.detail.zone.name} bant`
-    : 'Zorlanma notundan tahmin edildi',
+    : r.detail.intensitySource === 'vo2max'
+      ? `VO2max'ından hesaplandı: %${Math.round(r.detail.vo2r * 100)} VO2 rezervi`
+      : 'Zorlanma notundan tahmin edildi (nabız ve VO2max girilmemiş)',
   volume: `${fmtDuration(a.durationSec)} · ${fmtKm(a.distanceKm)}`,
   energy: r.detail.kcal
-    ? `${Math.round(r.detail.kcal)} kcal · ${fmtNum(r.detail.mets, 1)} MET (ACSM)`
+    ? `${Math.round(r.detail.kcal)} kcal · ${fmtNum(r.detail.mets, 1)} MET (ACSM)` +
+      (r.detail.rmr ? ` · net hesabı ${r.detail.rmr.method}` : '')
     : 'Kilo girilmediği için hesaplanamadı',
   efficiency: r.detail.efficiencyReference
     ? `${Math.round(a.beatsPerKm)} atış/km · geçmiş ortancan ${Math.round(r.detail.efficiencyReference)}`
@@ -564,6 +583,47 @@ function renderCompare() {
 
 function beats(v) {
   return Number.isFinite(v) ? `${Math.round(v)} atış/km` : '—';
+}
+
+function renderProfileStatus() {
+  const filled = PROFILE_FIELDS.filter((f) => Number(settings[f.key]));
+  const rmr = restingKcalPerDay(settings);
+
+  $('#profileStatus').innerHTML = `
+    <div class="profile-status">
+      <div class="ptitle"><span>Profil eksiksizliği</span>
+        <b>${filled.length}/${PROFILE_FIELDS.length}</b></div>
+      ${PROFILE_FIELDS.map((f) => {
+        const has = Boolean(Number(settings[f.key]));
+        return `<div class="profile-row${has ? '' : ' missing'}">
+          <span class="tick">${has ? '✓' : '○'}</span>
+          <span><b>${f.label}</b> — ${f.effect}${has ? '' : ` <em>(şu an varsayılan değer kullanılıyor)</em>`}</span>
+        </div>`;
+      }).join('')}
+      <div class="profile-row">
+        <span class="tick">≈</span>
+        <span>${rmr
+          ? `Dinlenme metabolizman <b>${Math.round(rmr.kcal).toLocaleString('tr-TR')} kcal/gün</b> (${rmr.method}) — net kalori bundan hesaplanıyor.`
+          : 'Dinlenme metabolizması için yaş, boy ve kilo gerekiyor; şu an genel 1 MET varsayımı kullanılıyor.'}</span>
+      </div>
+    </div>`;
+}
+
+// Özette yalnızca temel değerler eksikken uyarı çıkar; isteğe bağlı olanlar
+// Ayarlar'daki profil kartında listelenir, sürekli hatırlatma yapılmaz.
+function renderProfileCta() {
+  const essential = profileMissing().filter((f) => f.essential);
+  const box = $('#profileCta');
+  if (!essential.length) { box.innerHTML = ''; return; }
+
+  box.innerHTML = `
+    <div class="cta">
+      <div class="ctitle">Daha isabetli sonuç için</div>
+      <p>Puan ve kalori hesabı şu değerler olmadan varsayımlarla çalışıyor:</p>
+      <div class="missing-list">${essential
+        .map((f) => `• <b style="color:var(--text)">${f.label}</b> — ${f.effect}`).join('<br>')}</div>
+      <div class="actions"><button class="primary" data-go-settings>Ayarlara git</button></div>
+    </div>`;
 }
 
 function renderDataInfo() {
@@ -918,6 +978,10 @@ function bind() {
     }
   });
 
+  $('#profileCta').addEventListener('click', (e) => {
+    if (e.target.closest('button[data-go-settings]')) showView('settings');
+  });
+
   $('#calendarBtn').addEventListener('click', () => {
     if (!calSelected) {
       // İlk açılışta en son antrenmanın ayına ve gününe git
@@ -986,6 +1050,8 @@ function bind() {
       age: Number($('#s-age').value) || null,
       weightKg: Number($('#s-weight').value) || null,
       heightCm: Number($('#s-height').value) || null,
+      bodyFatPct: Number($('#s-bodyfat').value) || null,
+      vo2max: Number($('#s-vo2max').value) || null,
       sex: $('#s-sex').value === 'female' ? 'female' : 'male',
       speedUnit: $('#s-speedunit').value === 'pace' ? 'pace' : 'kmh',
       weeklyGoalKm: Number($('#s-weekly').value) || 0,
@@ -1043,6 +1109,8 @@ function syncSettingsForm() {
   $('#s-age').value = settings.age ?? '';
   $('#s-weight').value = settings.weightKg ?? '';
   $('#s-height').value = settings.heightCm ?? '';
+  $('#s-bodyfat').value = settings.bodyFatPct ?? '';
+  $('#s-vo2max').value = settings.vo2max ?? '';
   $('#s-sex').value = settings.sex === 'female' ? 'female' : 'male';
   $('#s-speedunit').value = settings.speedUnit === 'pace' ? 'pace' : 'kmh';
   $('#s-weekly').value = settings.weeklyGoalKm ?? '';

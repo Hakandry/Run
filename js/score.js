@@ -10,6 +10,12 @@
 // - ACSM metabolik denklemleri (düz zemin, eğim = 0):
 //   yürüyüş VO2 = 0,1 × hız(m/dk) + 3,5 ; koşu VO2 = 0,2 × hız(m/dk) + 3,5
 //   MET = VO2 / 3,5 ; kcal/dk = MET × 3,5 × kilo(kg) / 200
+// - Mifflin-St Jeor (1990): dinlenme metabolizması (RMR).
+//   erkek: 10×kg + 6,25×boy(cm) − 5×yaş + 5 ; kadın: aynısı − 161
+// - Katch-McArdle: RMR = 370 + 21,6 × yağsız kütle(kg). Vücut yağ oranı
+//   biliniyorsa daha isabetli; bu yüzden yağ oranı girilmişse o kullanılır.
+// - %VO2R (VO2 rezervi) = (VO2 − 3,5) / (VO2max − 3,5). Nabız yoksa şiddet
+//   buradan tahmin edilir; %HRR ile yaklaşık aynı ölçeğe oturur.
 // - ACSM şiddet sınıflaması (%HRR): <30 çok hafif, 30–39 hafif, 40–59 orta,
 //   60–89 şiddetli, ≥90 maksimuma yakın. Haftalık hedef: 150 dk orta şiddet
 //   (şiddetli dakikalar iki katı sayılır) — seans hacmi buna göre ölçeklenir.
@@ -83,11 +89,48 @@ export function kcalFor(mets, weightKg, durationSec) {
   return (mets * 3.5 * weightKg / 200) * (durationSec / 60);
 }
 
-// Net kalori: aynı sürede zaten harcayacağın dinlenme metabolizması (1 MET)
-// düşülür. Kilo eşdeğeri hesabında brüt değil bu kullanılır.
-export function kcalNetFor(mets, weightKg, durationSec) {
+export function leanBodyMass(weightKg, bodyFatPct) {
+  const bf = Number(bodyFatPct);
+  if (!weightKg || !Number.isFinite(bf) || bf <= 0 || bf >= 70) return null;
+  return weightKg * (1 - bf / 100);
+}
+
+/**
+ * Dinlenme metabolizması (kcal/gün).
+ * Vücut yağ oranı varsa Katch-McArdle, yoksa Mifflin-St Jeor.
+ * Yeterli veri yoksa null döner; o zaman 1 MET varsayımına düşülür.
+ */
+export function restingKcalPerDay(settings = {}) {
+  const weightKg = Number(settings.weightKg);
+  const lbm = leanBodyMass(weightKg, settings.bodyFatPct);
+  if (lbm) return { kcal: 370 + 21.6 * lbm, method: 'Katch-McArdle' };
+
+  const heightCm = Number(settings.heightCm);
+  const age = Number(settings.age);
+  if (!weightKg || !heightCm || !age) return null;
+  const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  return {
+    kcal: settings.sex === 'female' ? base - 161 : base + 5,
+    method: 'Mifflin-St Jeor',
+  };
+}
+
+// Net kalori: aynı sürede zaten harcayacağın dinlenme enerjisi düşülür.
+// Profil doluysa kişiye özel RMR, değilse genel 1 MET varsayımı kullanılır.
+export function kcalNetFor(mets, weightKg, durationSec, settings = {}) {
   if (!mets || !weightKg || !(durationSec > 0)) return null;
-  return (Math.max(mets - 1, 0) * 3.5 * weightKg / 200) * (durationSec / 60);
+  const gross = (mets * 3.5 * weightKg / 200) * (durationSec / 60);
+  const rmr = restingKcalPerDay(settings);
+  const restPerMin = rmr ? rmr.kcal / 1440 : (1 * 3.5 * weightKg / 200);
+  return Math.max(0, gross - restPerMin * (durationSec / 60));
+}
+
+// VO2 rezervi oranı: nabız yokken şiddet ölçüsü olarak kullanılır.
+export function vo2ReserveRatio(mets, vo2max) {
+  const max = Number(vo2max);
+  if (!mets || !Number.isFinite(max) || max <= 10) return null;
+  const vo2 = mets * 3.5;
+  return Math.min(1.1, Math.max(0, (vo2 - 3.5) / (max - 3.5)));
 }
 
 /* ---- Alt puanlar (her biri 0–10) ---- */
@@ -136,7 +179,8 @@ export function scoreActivity(activity, settings = {}, history = []) {
   const zone = intensityZone(x);
   const mets = metsFor(activity.type, activity.distanceKm, activity.durationSec);
   const kcal = kcalFor(mets, weightKg, activity.durationSec);
-  const kcalNet = kcalNetFor(mets, weightKg, activity.durationSec);
+  const kcalNet = kcalNetFor(mets, weightKg, activity.durationSec, settings);
+  const rmr = restingKcalPerDay(settings);
 
   // Yük: nabız varsa Banister TRIMP, yoksa Foster session-RPE'den TRIMP eşdeğeri.
   const trimp = banisterTrimp(durationMin, x, sex);
@@ -144,8 +188,10 @@ export function scoreActivity(activity, settings = {}, history = []) {
   const sessionRpeLoad = rpe * durationMin;
   const loadValue = trimp !== null ? trimp : sessionRpeLoad / 3.5;
 
-  // Şiddet: nabız yoksa algılanan zorlanma (RPE/10) vekil olarak kullanılır.
-  const intensityValue = x !== null ? x : rpe / 10;
+  // Şiddet kaynağı sırası: ölçülen nabız > VO2max'tan %VO2R > algılanan zorlanma.
+  const vo2r = vo2ReserveRatio(mets, settings.vo2max);
+  const intensityValue = x !== null ? x : (vo2r !== null ? vo2r : rpe / 10);
+  const intensitySource = x !== null ? 'hr' : (vo2r !== null ? 'vo2max' : 'rpe');
 
   const parts = {
     load: curve(LOAD_CURVE, loadValue),
@@ -195,6 +241,9 @@ export function scoreActivity(activity, settings = {}, history = []) {
       mets,
       kcal,
       kcalNet,
+      rmr,
+      vo2r,
+      intensitySource,
       maxHrUsed: maxHr,
       maxHrEstimated: !Number(settings.maxHr) && Boolean(maxHr),
       restHrUsed: restHr,

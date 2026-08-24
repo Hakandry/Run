@@ -9,6 +9,8 @@ const DEFAULT_SETTINGS = {
   age: null,
   weightKg: null,
   heightCm: null,
+  bodyFatPct: null,
+  vo2max: null,
   sex: 'male',
   speedUnit: 'kmh',   // 'kmh' (araç göstergesi gibi) veya 'pace' (dk/km)
 };

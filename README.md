@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.3.6
+**Sürüm:** v0.3.7
 
 ## Neler var
 
@@ -188,13 +188,33 @@ hesaplanamayan bir bileşenin ağırlığı diğerlerine dağıtılır.
 | Enerji | %10 | ACSM metabolik denklemlerinden MET ve kilo ile kalori |
 | Verim | %10 | Nabız verimin (atış/km), aynı türdeki son 10 kaydının ortancasına göre |
 
-Profil değerlerinin rolü:
+Profil değerlerinin rolü (Ayarlar → Profil; her alanın altında da yazar):
 
-- **Yaş** — maksimum nabız girilmemişse Tanaka denklemiyle tahmin edilir: `208 − 0,7 × yaş`.
-- **Kilo** — kalori ve MET hesabına girer (`kcal/dk = MET × 3,5 × kg / 200`).
-- **Boy** — adım tahmininde adım uzunluğunu belirler.
-- **Dinlenme nabzı** — nabız rezervi oranının paydasında; girilmezse 60 varsayılır.
-- **Cinsiyet** — TRIMP'in üstel katsayısını belirler (erkek 0,64·e^1,92x, kadın 0,86·e^1,67x).
+| Alan | Neyi etkiler |
+|---|---|
+| **Yaş** | Maksimum nabız girilmemişse Tanaka ile tahmin (`208 − 0,7 × yaş`); dinlenme metabolizması |
+| **Kilo** | Kalori ve MET hesabının temeli (`kcal/dk = MET × 3,5 × kg / 200`) |
+| **Boy** | Adım tahmini ve dinlenme metabolizması |
+| **Cinsiyet** | TRIMP katsayısı (erkek 0,64·e^1,92x, kadın 0,86·e^1,67x) ve metabolizma formülü |
+| **Dinlenme nabzı** | Nabız rezervinin tabanı; girilmezse 60 varsayılır |
+| **Ölçülmüş maks. nabız** | Nabız rezervinin tavanı; boşsa yaştan tahmin edilir (±7–10 atım) |
+| **Vücut yağ oranı** (ops.) | Metabolizmayı Katch-McArdle ile hesaplar: net kalori daha isabetli |
+| **VO2max** (ops.) | Nabız girilmemiş antrenmanlarda şiddeti %VO2 rezervinden tahmin eder |
+
+**Dinlenme metabolizması (RMR).** Net kalori, seans süresince zaten harcanacak
+dinlenme enerjisi düşülerek bulunur. Vücut yağ oranı girilmişse Katch-McArdle
+(`370 + 21,6 × yağsız kütle`), girilmemişse Mifflin-St Jeor
+(`10×kg + 6,25×boy − 5×yaş + 5 / −161`) kullanılır. İkisi de hesaplanamıyorsa
+genel 1 MET varsayımına düşülür.
+
+**Şiddet kaynağı sırası.** Ortalama nabız varsa nabız rezervi (%HRR); yoksa VO2max
+girilmişse %VO2 rezervi; o da yoksa zorlanma notu. Puan ekranı hangisinin
+kullanıldığını yazar.
+
+**Profil eksiksizliği.** Ayarlar'daki kart hangi alanların dolu olduğunu, her birinin
+neyi etkilediğini ve hesaplanan RMR'yi gösterir. Temel alanlar (yaş, kilo, boy,
+dinlenme nabzı) eksikken özet ekranında bir hatırlatma çıkar; isteğe bağlı alanlar
+için sürekli uyarı yapılmaz.
 
 Nabız girilmediğinde yük Foster'ın session-RPE yöntemine (zorlanma × süre), şiddet ise
 zorlanma notuna göre tahmin edilir.
