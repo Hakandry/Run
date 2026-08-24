@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.0.2
+**Sürüm:** v0.1.0
 
 ## Neler var
 
@@ -13,6 +13,9 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
   gerçekçi olmayan girdileri (2 dk/km altı tempo, ortalamadan düşük maksimum nabız vb.) reddeder.
 - **Özet:** koç notu, bu hafta vs. geçen hafta (mesafe, süre, tempo, nabız), haftalık
   hedef yüzdesi, son 12 aktivitenin grafiği ve kişisel rekorlar.
+- **Antrenman puanı (0–10):** her kayıt, yaşın ve kilon referans alınarak puanlanır;
+  puan ekranında renkli halka, kademe adı ve puanın nasıl oluştuğunun dökümü yer alır.
+  Ayrıntı için aşağıdaki *Puanlama* bölümü.
 - **Kıyas:** son 7/14/30 gün ile bir önceki eşit dönem, son aktivite vs. aynı türdeki
   bir önceki aktivite, koşu/yürüyüş ortalamaları.
 - **Nabız verimi (atış/km):** `ortalama nabız × tempo`. Aynı mesafeyi kaç kalp atışıyla
@@ -48,6 +51,43 @@ js/format.js            tr-TR biçimlendiriciler
 sw.js                   çevrimdışı önbellek
 manifest.webmanifest    PWA manifesti
 ```
+
+## Puanlama
+
+Her aktivite 0–10 arası puanlanır. Puan beş bileşenin ağırlıklı ortalamasıdır;
+hesaplanamayan bir bileşenin ağırlığı diğerlerine dağıtılır.
+
+| Bileşen | Ağırlık | Neye bakar |
+|---|---|---|
+| Yük | %35 | Banister TRIMP — süre × nabız rezervi oranı × üstel şiddet katsayısı |
+| Şiddet | %25 | Ortalama nabzın rezerv içindeki yeri; koşuda %60–85, yürüyüşte %40–65 bandı en yüksek puanı alır |
+| Hacim | %20 | Şiddetle ağırlıklı dakika (WHO/ACSM mantığı) ve mesafe |
+| Enerji | %10 | ACSM metabolik denklemlerinden MET ve kilo ile kalori |
+| Verim | %10 | Nabız verimin (atış/km), aynı türdeki son 10 kaydının ortancasına göre |
+
+Profil değerlerinin rolü:
+
+- **Yaş** — maksimum nabız girilmemişse Tanaka denklemiyle tahmin edilir: `208 − 0,7 × yaş`.
+- **Kilo** — kalori ve MET hesabına girer (`kcal/dk = MET × 3,5 × kg / 200`).
+- **Dinlenme nabzı** — nabız rezervi oranının paydasında; girilmezse 60 varsayılır.
+- **Cinsiyet** — TRIMP'in üstel katsayısını belirler (erkek 0,64·e^1,92x, kadın 0,86·e^1,67x).
+
+Nabız girilmediğinde yük Foster'ın session-RPE yöntemine (zorlanma × süre), şiddet ise
+zorlanma notuna göre tahmin edilir.
+
+Kademeler ve renkleri: Çok hafif (0–2,9) · Hafif (3–4,9) · Dengeli (5–6,4) ·
+Verimli (6,5–7,9) · Güçlü (8–8,9) · Zirve (9–10).
+
+### Kaynaklar
+
+- Tanaka H. ve ark. (2001), *J Am Coll Cardiol* — maksimum nabız denklemi (208 − 0,7 × yaş)
+- Banister E.W. — TRIMP (training impulse), nabız rezervi tabanlı üstel yük modeli
+- Foster C. ve ark. (2001) — session-RPE yöntemi (RPE × süre)
+- ACSM metabolik denklemleri — yürüyüş/koşu VO2 ve MET hesabı
+- ACSM şiddet sınıflaması (%HRR) ve WHO/ACSM haftalık 150 dakika orta şiddet önerisi
+
+> Bu puan bir sağlık ölçütü değil, antrenman geri bildirimidir. Nabız denklemleri
+> ±7–10 atım hata payı taşır; rahatsızlık halinde hekime danış.
 
 ## Gizlilik
 

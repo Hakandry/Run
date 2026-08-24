@@ -1,5 +1,5 @@
 // Basit önbellek: uygulama kabuğu offline çalışsın.
-const VERSION = 'koc-v0.0.2';
+const VERSION = 'koc-v0.1.0';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './js/stats.js',
   './js/chart.js',
   './js/format.js',
+  './js/score.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/maskable.svg',

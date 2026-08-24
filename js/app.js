@@ -1,18 +1,21 @@
 import * as store from './storage.js';
 import * as S from './stats.js';
 import { renderChart } from './chart.js';
+import { scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr } from './score.js';
 import {
   TYPE_LABEL, TYPE_ICON, fmtNum, fmtKm, fmtDuration, fmtPace, fmtPaceUnit,
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.0.2';
+const APP_VERSION = '0.1.0';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
 let activities = [];   // metriklerle zenginleştirilmiş, en yeni ilk
+let scores = new Map();
 let settings = store.getSettings();
 let editingId = null;
+let lastScoreId = null;
 
 /* ---------- Görünüm yönetimi ---------- */
 
@@ -60,10 +63,23 @@ function cmpRow(label, cur, prev, d) {
 function refresh() {
   activities = S.decorate(store.getActivities());
   settings = store.getSettings();
+  computeScores();
   renderSummary();
   renderList();
   renderCompare();
   renderDataInfo();
+}
+
+// Her aktivite kendisinden ÖNCEKİ aktivitelerle kıyaslanarak puanlanır.
+function computeScores() {
+  scores = new Map();
+  activities.forEach((a, i) => {
+    scores.set(a.id, scoreActivity(a, settings, activities.slice(i + 1)));
+  });
+}
+
+function profileReady() {
+  return Boolean(Number(settings.age) && Number(settings.weightKg));
 }
 
 function renderSummary() {
@@ -73,6 +89,7 @@ function renderSummary() {
   const goal = Number(settings.weeklyGoalKm) || 0;
   const goalPct = goal > 0 ? Math.min(999, (thisWeek.totalKm / goal) * 100) : null;
 
+  const scoreStat = recentScore();
   $('#weekStats').innerHTML = [
     statCard('Bu hafta mesafe', fmtKm(thisWeek.totalKm),
       deltaHtml(S.delta(thisWeek.totalKm, lastWeek.totalKm, false))),
@@ -82,6 +99,7 @@ function renderSummary() {
       deltaHtml(S.delta(thisWeek.avgPace, lastWeek.avgPace, true))),
     statCard('Ort. nabız', fmtHr(thisWeek.avgHr),
       deltaHtml(S.delta(thisWeek.avgHr, lastWeek.avgHr, true))),
+    ...(scoreStat ? [scoreStat] : []),
   ].join('') + (goalPct !== null
     ? statCard('Haftalık hedef', `%${fmtNum(goalPct, 0)}`,
         `<span class="${goalPct >= 100 ? 'up' : 'flat'}">${fmtKm(thisWeek.totalKm)} / ${goal} km</span>`)
@@ -91,18 +109,35 @@ function renderSummary() {
   renderRecords();
 }
 
+// Son 30 gündeki aktivitelerin ortalama puanı + son aktivitenin puanı
+function recentScore() {
+  const from = S.daysAgoIso(29);
+  const recent = activities.filter((a) => a.date >= from);
+  if (!recent.length) return null;
+  const avg = recent.reduce((sum, a) => sum + scores.get(a.id).score, 0) / recent.length;
+  const tier = scores.get(recent[0].id).tier;
+  return `<div class="stat" style="--tier-color:${tier.color}">` +
+    `<div class="k">Son 30 gün ort. puan</div>` +
+    `<div class="v tinted">${fmtNum(avg, 1)}</div>` +
+    `<div class="d"><span class="flat">son antrenman ${fmtNum(scores.get(recent[0].id).score, 1)} · ${tier.name}</span></div></div>`;
+}
+
 const CHART_FORMATTERS = {
   distanceKm: { label: 'Mesafe', format: (v) => fmtNum(v, 1) },
   pace: { label: 'Tempo', format: (v) => fmtPace(v) },
   avgHr: { label: 'Ort. nabız', format: (v) => `${Math.round(v)}` },
   beatsPerKm: { label: 'Nabız verimi', format: (v) => `${Math.round(v)}` },
+  score: { label: 'Antrenman puanı', format: (v) => fmtNum(v, 1) },
 };
 
 function renderMetricChart() {
   const metric = $('#chartMetric').value;
   const conf = CHART_FORMATTERS[metric];
-  const points = activities.slice(0, 12).reverse()
-    .map((a) => ({ date: a.date, value: a[metric], type: a.type }));
+  const points = activities.slice(0, 12).reverse().map((a) => ({
+    date: a.date,
+    value: metric === 'score' ? scores.get(a.id).score : a[metric],
+    type: a.type,
+  }));
   renderChart($('#chart'), points, conf);
 }
 
@@ -121,6 +156,100 @@ function renderRecords() {
         `<div class="record"><span class="k">${k}</span>` +
         `<span><span class="v">${f(a)}</span> <span class="when">${TYPE_ICON[a.type]} ${fmtDate(a.date)}</span></span></div>`).join('')
     : '<p class="empty">Rekorlar için önce birkaç aktivite ekle.</p>';
+}
+
+const PART_DETAIL = (r, a) => ({
+  load: r.detail.usedRpeFallback
+    ? `Foster session-RPE: ${Math.round(r.detail.sessionRpeLoad)} birim (nabız girilmediği için)`
+    : `Banister TRIMP: ${Math.round(r.detail.trimp)} birim`,
+  intensity: r.detail.zone
+    ? `Nabız rezervinin %${Math.round(r.detail.hrrRatio * 100)} seviyesi · ${r.detail.zone.name} bant`
+    : 'Zorlanma notundan tahmin edildi',
+  volume: `${fmtDuration(a.durationSec)} · ${fmtKm(a.distanceKm)}`,
+  energy: r.detail.kcal
+    ? `${Math.round(r.detail.kcal)} kcal · ${fmtNum(r.detail.mets, 1)} MET (ACSM)`
+    : 'Kilo girilmediği için hesaplanamadı',
+  efficiency: r.detail.efficiencyReference
+    ? `${Math.round(a.beatsPerKm)} atış/km · geçmiş ortancan ${Math.round(r.detail.efficiencyReference)}`
+    : 'Kıyas için aynı türde en az 2 nabızlı kayıt gerekiyor',
+});
+
+function renderScoreView(id) {
+  const box = $('#scoreCard');
+  const a = activities.find((x) => x.id === id) || activities[0];
+  if (!a) {
+    box.innerHTML = '<div class="card"><p class="empty">Önce bir aktivite ekle.</p></div>';
+    return;
+  }
+  lastScoreId = a.id;
+  const r = scores.get(a.id);
+  const style = `--tier-color:${r.tier.color};--tier-tint:${r.tier.tint}`;
+  const C = 2 * Math.PI * 70;
+  const details = PART_DETAIL(r, a);
+
+  const parts = Object.keys(COMPONENT_LABELS).map((k) => {
+    const v = r.parts[k];
+    const ok = Number.isFinite(v);
+    return `<div class="part${ok ? '' : ' missing'}">
+      <span class="pname">${COMPONENT_LABELS[k]} <small style="color:var(--muted)">%${Math.round(r.weights[k] * 100)}</small></span>
+      <span class="pval">${ok ? `${fmtNum(v, 1)}/10` : 'yok'}</span>
+      <span class="bar"><i style="width:${ok ? (v / 10) * 100 : 0}%"></i></span>
+      <span class="pdesc">${details[k]}</span>
+    </div>`;
+  }).join('');
+
+  const chips = [
+    ['Mesafe', fmtKm(a.distanceKm)],
+    ['Süre', fmtDuration(a.durationSec)],
+    ['Tempo', fmtPaceUnit(a.pace)],
+    ['Ort. nabız', fmtHr(a.avgHr)],
+    ['Maks. nabız', fmtHr(a.maxHr)],
+    ['%HRR', r.detail.hrrRatio ? `%${Math.round(r.detail.hrrRatio * 100)}` : '—'],
+    ['Kalori', r.detail.kcal ? `${Math.round(r.detail.kcal)} kcal` : '—'],
+    ['Maks. nabız (kullanılan)', `${r.detail.maxHrUsed || '—'}${r.detail.maxHrEstimated ? ' (tahmin)' : ''}`],
+  ].map(([k, v]) => `<div class="chip"><b>${k}</b>${v}</div>`).join('');
+
+  box.innerHTML = `
+    <div class="score-card" style="${style}">
+      <div class="score-when">${TYPE_ICON[a.type]} ${TYPE_LABEL[a.type]} · ${fmtDate(a.date)}</div>
+      <svg class="score-ring" viewBox="0 0 168 168" role="img"
+           aria-label="Antrenman puanı ${fmtNum(r.score, 1)} bölü 10, ${r.tier.name}">
+        <circle class="track" cx="84" cy="84" r="70" fill="none" stroke-width="12"></circle>
+        <circle class="value" cx="84" cy="84" r="70" fill="none" stroke-width="12"
+                stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${C.toFixed(1)}"></circle>
+        <text class="num" x="84" y="80" text-anchor="middle" dominant-baseline="middle">${fmtNum(r.score, 1)}</text>
+        <text class="max" x="84" y="114" text-anchor="middle">/ 10</text>
+      </svg>
+      <div class="score-tier">${r.tier.name}</div>
+      <p class="score-comment">${scoreComment(r, a)}</p>
+    </div>
+
+    <div class="card" style="${style}">
+      <div class="card-head"><h3>Puan nasıl oluştu</h3></div>
+      <div class="score-parts">${parts}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Seans verileri</h3></div>
+      <div class="chips">${chips}</div>
+    </div>
+
+    ${profileReady() ? '' : `<div class="card profile-cta">
+      <p class="muted">Yaşını ve kilonu girersen puan tam hesaplanır: yaş maksimum
+      nabzı (Tanaka), kilo ise kalori/MET değerini belirler.</p>
+      <div class="actions"><button class="primary" data-go="settings">Profili doldur</button></div>
+    </div>`}
+
+    <div class="actions">
+      <button class="ghost" data-go="list">Listeye dön</button>
+      <button class="ghost" data-go="summary">Özete git</button>
+    </div>`;
+
+  // Halkayı puana kadar doldur
+  const ring = box.querySelector('.score-ring .value');
+  requestAnimationFrame(() => {
+    ring.setAttribute('stroke-dashoffset', (C * (1 - r.score / 10)).toFixed(1));
+  });
 }
 
 function renderList() {
@@ -144,10 +273,17 @@ function renderList() {
       a.effort ? ['Zorlanma', `${a.effort}/10`] : null,
     ].filter(Boolean);
 
+    const r = scores.get(a.id);
     return `<article class="item" data-id="${a.id}">
       <div class="item-head">
         <span class="item-title">${TYPE_ICON[a.type]} ${TYPE_LABEL[a.type]}</span>
         <span class="item-date">${fmtDate(a.date)}</span>
+      </div>
+      <div class="item-metrics" style="margin-top:8px">
+        <button class="score-badge" data-act="score" style="color:${r.tier.color};background:${r.tier.tint}"
+                aria-label="Puan ${fmtNum(r.score, 1)} bölü 10, ${r.tier.name}. Ayrıntılar">
+          ${fmtNum(r.score, 1)} <small>${r.tier.name}</small>
+        </button>
       </div>
       <div class="item-metrics">${metrics.map(([k, v]) => `<span><b>${k}</b> ${v}</span>`).join('')}</div>
       ${a.note ? `<p class="item-note">${escapeHtml(a.note)}</p>` : ''}
@@ -334,12 +470,13 @@ function bind() {
       errBox.hidden = false;
       return;
     }
-    store.upsertActivity(a);
+    const saved = store.upsertActivity(a);
     const wasEdit = Boolean(editingId);
     resetForm();
     refresh();
     toast(wasEdit ? 'Aktivite güncellendi.' : 'Aktivite kaydedildi.');
-    showView(wasEdit ? 'list' : 'summary');
+    renderScoreView(saved.id);
+    showView('score');
   });
 
   $('#cancelEdit').addEventListener('click', () => { resetForm(); showView('list'); });
@@ -350,7 +487,10 @@ function bind() {
     const id = btn.closest('.item').dataset.id;
     const a = activities.find((x) => x.id === id);
     if (!a) return;
-    if (btn.dataset.act === 'edit') {
+    if (btn.dataset.act === 'score') {
+      renderScoreView(id);
+      showView('score');
+    } else if (btn.dataset.act === 'edit') {
       fillForm(a);
     } else if (confirm(`${fmtDate(a.date)} tarihli ${TYPE_LABEL[a.type].toLowerCase()} kaydı silinsin mi?`)) {
       store.deleteActivity(id);
@@ -359,18 +499,28 @@ function bind() {
     }
   });
 
+  $('#scoreCard').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-go]');
+    if (btn) showView(btn.dataset.go);
+  });
+
   $('#chartMetric').addEventListener('change', renderMetricChart);
   $('#listFilter').addEventListener('change', renderList);
   $('#comparePeriod').addEventListener('change', renderCompare);
 
   $('#saveSettings').addEventListener('click', () => {
     settings = store.saveSettings({
+      age: Number($('#s-age').value) || null,
+      weightKg: Number($('#s-weight').value) || null,
+      sex: $('#s-sex').value === 'female' ? 'female' : 'male',
       weeklyGoalKm: Number($('#s-weekly').value) || 0,
       restHr: Number($('#s-resthr').value) || null,
       maxHr: Number($('#s-maxhr').value) || null,
     });
     refresh();
-    toast('Ayarlar kaydedildi.');
+    syncSettingsForm();
+    if (lastScoreId) renderScoreView(lastScoreId);
+    toast('Ayarlar kaydedildi, puanlar yeniden hesaplandı.');
   });
 
   $('#exportBtn').addEventListener('click', () => {
@@ -414,9 +564,14 @@ function bind() {
 
 function syncSettingsForm() {
   settings = store.getSettings();
+  $('#s-age').value = settings.age ?? '';
+  $('#s-weight').value = settings.weightKg ?? '';
+  $('#s-sex').value = settings.sex === 'female' ? 'female' : 'male';
   $('#s-weekly').value = settings.weeklyGoalKm ?? '';
   $('#s-resthr').value = settings.restHr ?? '';
+  const est = estimatedMaxHr(Number(settings.age));
   $('#s-maxhr').value = settings.maxHr ?? '';
+  $('#s-maxhr').placeholder = est ? `${est} (yaşından tahmin)` : '190';
 }
 
 /* ---------- PWA kurulumu ---------- */
@@ -478,6 +633,7 @@ function init() {
   setupInstall();
   registerSw();
   const v = location.hash.slice(1);
+  if (v === 'score') renderScoreView(activities[0]?.id);
   showView(v && document.getElementById(`view-${v}`) ? v : 'summary');
 }
 

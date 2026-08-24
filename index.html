@@ -20,7 +20,7 @@
     <img src="./icons/icon.svg" alt="" width="28" height="28">
     <div>
       <h1>Koç</h1>
-      <span class="ver" id="appVersion">v0.0.2</span>
+      <span class="ver" id="appVersion">v0.1.0</span>
     </div>
   </div>
   <button class="ghost" id="installBtn" hidden>Yükle</button>
@@ -46,6 +46,7 @@
           <option value="pace">Tempo (dk/km)</option>
           <option value="avgHr">Ort. nabız</option>
           <option value="beatsPerKm">Nabız verimi (atış/km)</option>
+          <option value="score">Antrenman puanı</option>
         </select>
       </div>
       <div id="chart" class="chart"></div>
@@ -157,10 +158,36 @@
     </div>
   </section>
 
+  <!-- PUAN -->
+  <section id="view-score" class="view" hidden aria-labelledby="t-score">
+    <h2 id="t-score" class="sr-only">Antrenman puanı</h2>
+    <div id="scoreCard"></div>
+  </section>
+
   <!-- AYARLAR -->
   <section id="view-settings" class="view" hidden aria-labelledby="t-settings">
     <h2 id="t-settings">Ayarlar</h2>
     <div class="card form">
+      <h3>Profil</h3>
+      <p class="muted">Puanlama yaşını, kilonu ve nabız değerlerini kullanır.
+        Maksimum nabzı boş bırakırsan yaşından tahmin edilir (Tanaka: 208 − 0,7 × yaş).</p>
+      <div class="row2">
+        <label class="field">
+          <span>Yaş</span>
+          <input type="number" id="s-age" inputmode="numeric" min="10" max="99" placeholder="38">
+        </label>
+        <label class="field">
+          <span>Kilo (kg)</span>
+          <input type="number" id="s-weight" inputmode="decimal" step="0.5" min="30" max="250" placeholder="84">
+        </label>
+      </div>
+      <label class="field">
+        <span>Cinsiyet (TRIMP katsayısı için)</span>
+        <select id="s-sex">
+          <option value="male">Erkek</option>
+          <option value="female">Kadın</option>
+        </select>
+      </label>
       <label class="field">
         <span>Haftalık mesafe hedefi (km)</span>
         <input type="number" id="s-weekly" min="0" step="0.5">

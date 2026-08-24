@@ -4,7 +4,10 @@ const KEY = 'kocpwa.v1';
 const DEFAULT_SETTINGS = {
   weeklyGoalKm: 20,
   restHr: 60,
-  maxHr: 190,
+  maxHr: null,   // boşsa yaştan tahmin edilir (Tanaka)
+  age: null,
+  weightKg: null,
+  sex: 'male',
 };
 
 const EMPTY = { version: 1, activities: [], settings: { ...DEFAULT_SETTINGS } };
