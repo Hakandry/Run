@@ -49,6 +49,20 @@ sw.js                   çevrimdışı önbellek
 manifest.webmanifest    PWA manifesti
 ```
 
+## Gizlilik
+
+- Aktivite kayıtları yalnızca tarayıcının `localStorage` alanında, cihazda tutulur.
+  Depoda veri yoktur; deponun public olması kayıtları görünür yapmaz.
+- Uygulama hiçbir sunucuya veri göndermez. Koddaki tek ağ isteği, service worker'ın
+  kendi dosyalarını (HTML/CSS/JS) önbelleğe almasıdır; farklı bir alan adına istek yok.
+  Analitik, izleyici, harici font veya CDN kullanılmıyor.
+- Linki bilen biri uygulamayı açabilir ama kendi boş kopyasını görür; veriler
+  tarayıcı bazlıdır, paylaşılmaz.
+- **Dışa aktar** ile alınan `koc-yedek-*.json` dosyası tüm kayıtlarını içerir;
+  depoya eklenmemesi için `.gitignore`'a alındı. Yedeği paylaşırken dikkat et.
+- Tarayıcı verilerini temizlemek kayıtları siler. Düzenli olarak dışa aktarıp
+  yedek almak iyi olur.
+
 ## Güncelleme
 
 Yeni sürüm `main` dalına gönderildiğinde GitHub Pages 1–2 dakika içinde yayınlar.

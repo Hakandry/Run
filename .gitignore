@@ -1,0 +1,6 @@
+# Uygulamadan alınan yedekler kişisel veridir — depoya girmemeli.
+koc-yedek-*.json
+*.backup.json
+
+.DS_Store
+node_modules/
