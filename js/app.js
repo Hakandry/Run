@@ -3,11 +3,11 @@ import * as S from './stats.js';
 import { renderChart } from './chart.js';
 import { scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr } from './score.js';
 import {
-  TYPE_LABEL, TYPE_ICON, fmtNum, fmtKm, fmtDuration, fmtPace, fmtPaceUnit,
+  TYPE_LABEL, TYPE_ICON, fmtNum, fmtKm, fmtDuration, fmtPace, fmtPaceUnit, fmtSpeedKmh,
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.1.0';
+const APP_VERSION = '0.1.1';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -36,6 +36,31 @@ function toast(msg) {
   t.hidden = false;
   clearTimeout(toast._t);
   toast._t = setTimeout(() => { t.hidden = true; }, 2400);
+}
+
+/* ---------- Hız gösterimi ---------- */
+// Tüm hız değerleri tek yerden geçer; ayardaki birime göre km/sa ya da dk/km.
+
+const usesKmh = () => settings.speedUnit !== 'pace';
+const paceToKmh = (paceMin) => (Number.isFinite(paceMin) && paceMin > 0 ? 60 / paceMin : null);
+
+// Etiket: "Hız" / "Tempo" (başlıklarda kullanılır)
+const speedWord = (capital = true) => {
+  const w = usesKmh() ? 'hız' : 'tempo';
+  return capital ? w[0].toLocaleUpperCase('tr') + w.slice(1) : w;
+};
+
+// Tempo (dk/km) değerini seçili birimde yazdırır.
+function fmtSpeed(paceMin) {
+  return usesKmh() ? fmtSpeedKmh(paceToKmh(paceMin)) : fmtPaceUnit(paceMin);
+}
+
+// Fark hesabı gösterilen büyüklük üzerinden yapılır:
+// km/sa'da yüksek olan iyi, dk/km'de düşük olan iyi.
+function speedDelta(currentPace, previousPace) {
+  return usesKmh()
+    ? S.delta(paceToKmh(currentPace), paceToKmh(previousPace), false)
+    : S.delta(currentPace, previousPace, true);
 }
 
 /* ---------- Yardımcılar ---------- */
@@ -95,8 +120,8 @@ function renderSummary() {
       deltaHtml(S.delta(thisWeek.totalKm, lastWeek.totalKm, false))),
     statCard('Bu hafta süre', thisWeek.totalSec > 0 ? fmtDuration(thisWeek.totalSec) : '0:00',
       deltaHtml(S.delta(thisWeek.totalSec, lastWeek.totalSec, false))),
-    statCard('Ort. tempo', fmtPaceUnit(thisWeek.avgPace),
-      deltaHtml(S.delta(thisWeek.avgPace, lastWeek.avgPace, true))),
+    statCard(`Ort. ${speedWord(false)}`, fmtSpeed(thisWeek.avgPace),
+      deltaHtml(speedDelta(thisWeek.avgPace, lastWeek.avgPace))),
     statCard('Ort. nabız', fmtHr(thisWeek.avgHr),
       deltaHtml(S.delta(thisWeek.avgHr, lastWeek.avgHr, true))),
     ...(scoreStat ? [scoreStat] : []),
@@ -124,28 +149,39 @@ function recentScore() {
 
 const CHART_FORMATTERS = {
   distanceKm: { label: 'Mesafe', format: (v) => fmtNum(v, 1) },
-  pace: { label: 'Tempo', format: (v) => fmtPace(v) },
+  pace: {
+    label: () => speedWord(),
+    format: (v) => (usesKmh() ? fmtNum(v, 1) : fmtPace(v)),
+    value: (a) => (usesKmh() ? paceToKmh(a.pace) : a.pace),
+  },
   avgHr: { label: 'Ort. nabız', format: (v) => `${Math.round(v)}` },
   beatsPerKm: { label: 'Nabız verimi', format: (v) => `${Math.round(v)}` },
   score: { label: 'Antrenman puanı', format: (v) => fmtNum(v, 1) },
 };
 
 function renderMetricChart() {
+  $('#chartMetric').querySelector('option[value="pace"]').textContent =
+    usesKmh() ? 'Hız (km/sa)' : 'Tempo (dk/km)';
   const metric = $('#chartMetric').value;
   const conf = CHART_FORMATTERS[metric];
   const points = activities.slice(0, 12).reverse().map((a) => ({
     date: a.date,
-    value: metric === 'score' ? scores.get(a.id).score : a[metric],
+    value: metric === 'score' ? scores.get(a.id).score
+      : conf.value ? conf.value(a)
+      : a[metric],
     type: a.type,
   }));
-  renderChart($('#chart'), points, conf);
+  renderChart($('#chart'), points, {
+    ...conf,
+    label: typeof conf.label === 'function' ? conf.label() : conf.label,
+  });
 }
 
 function renderRecords() {
   const pr = S.personalRecords(activities);
   const rows = [
     ['En uzun mesafe', pr.longest, (a) => fmtKm(a.distanceKm)],
-    ['En hızlı tempo (1 km+)', pr.fastest, (a) => fmtPaceUnit(a.pace)],
+    [usesKmh() ? 'En yüksek hız (1 km+)' : 'En hızlı tempo (1 km+)', pr.fastest, (a) => fmtSpeed(a.pace)],
     ['En uzun süre', pr.longestTime, (a) => fmtDuration(a.durationSec)],
     ['En düşük ort. nabız', pr.lowestHr, (a) => fmtHr(a.avgHr)],
     ['En iyi nabız verimi', pr.bestEfficiency, (a) => `${Math.round(a.beatsPerKm)} atış/km`],
@@ -201,7 +237,7 @@ function renderScoreView(id) {
   const chips = [
     ['Mesafe', fmtKm(a.distanceKm)],
     ['Süre', fmtDuration(a.durationSec)],
-    ['Tempo', fmtPaceUnit(a.pace)],
+    [speedWord(), fmtSpeed(a.pace)],
     ['Ort. nabız', fmtHr(a.avgHr)],
     ['Maks. nabız', fmtHr(a.maxHr)],
     ['%HRR', r.detail.hrrRatio ? `%${Math.round(r.detail.hrrRatio * 100)}` : '—'],
@@ -266,7 +302,7 @@ function renderList() {
     const metrics = [
       ['Mesafe', fmtKm(a.distanceKm)],
       ['Süre', fmtDuration(a.durationSec)],
-      ['Tempo', fmtPaceUnit(a.pace)],
+      [speedWord(), fmtSpeed(a.pace)],
       ['Ort. nabız', fmtHr(a.avgHr)],
       a.maxHr ? ['Maks.', fmtHr(a.maxHr)] : null,
       a.beatsPerKm ? ['Verim', `${Math.round(a.beatsPerKm)} atış/km`] : null,
@@ -315,8 +351,8 @@ function renderCompare() {
           deltaHtml(S.delta(current.totalKm, previous.totalKm, false))),
         cmpRow('Süre', fmtDuration(current.totalSec), fmtDuration(previous.totalSec),
           deltaHtml(S.delta(current.totalSec, previous.totalSec, false))),
-        cmpRow('Ort. tempo', fmtPaceUnit(current.avgPace), fmtPaceUnit(previous.avgPace),
-          deltaHtml(S.delta(current.avgPace, previous.avgPace, true))),
+        cmpRow(`Ort. ${speedWord(false)}`, fmtSpeed(current.avgPace), fmtSpeed(previous.avgPace),
+          deltaHtml(speedDelta(current.avgPace, previous.avgPace))),
         cmpRow('Ort. nabız', fmtHr(current.avgHr), fmtHr(previous.avgHr),
           deltaHtml(S.delta(current.avgHr, previous.avgHr, true))),
         cmpRow('Nabız verimi', beats(current.beatsPerKm), beats(previous.beatsPerKm),
@@ -340,8 +376,8 @@ function renderCompare() {
             deltaHtml(S.delta(c.distanceKm, p.distanceKm, false))),
           cmpRow('Süre', fmtDuration(c.durationSec), fmtDuration(p.durationSec),
             deltaHtml(S.delta(c.durationSec, p.durationSec, false))),
-          cmpRow('Tempo', fmtPaceUnit(c.pace), fmtPaceUnit(p.pace),
-            deltaHtml(S.delta(c.pace, p.pace, true))),
+          cmpRow(speedWord(), fmtSpeed(c.pace), fmtSpeed(p.pace),
+            deltaHtml(speedDelta(c.pace, p.pace))),
           cmpRow('Ort. nabız', fmtHr(c.avgHr), fmtHr(p.avgHr),
             deltaHtml(S.delta(c.avgHr, p.avgHr, true))),
           cmpRow('Maks. nabız', fmtHr(c.maxHr), fmtHr(p.maxHr),
@@ -359,7 +395,7 @@ function renderCompare() {
       [
         cmpRow('Aktivite', t.run.count, t.walk.count, ''),
         cmpRow('Toplam mesafe', fmtKm(t.run.totalKm), fmtKm(t.walk.totalKm), ''),
-        cmpRow('Ort. tempo', fmtPaceUnit(t.run.avgPace), fmtPaceUnit(t.walk.avgPace), ''),
+        cmpRow(`Ort. ${speedWord(false)}`, fmtSpeed(t.run.avgPace), fmtSpeed(t.walk.avgPace), ''),
         cmpRow('Ort. nabız', fmtHr(t.run.avgHr), fmtHr(t.walk.avgHr), ''),
         cmpRow('Nabız verimi', beats(t.run.beatsPerKm), beats(t.walk.beatsPerKm), ''),
       ].join('')
@@ -404,7 +440,11 @@ function validate(a) {
   if (a.avgHr && (a.avgHr < 30 || a.avgHr > 240)) return 'Ortalama nabız 30–240 aralığında olmalı.';
   if (a.maxHr && a.avgHr && a.maxHr < a.avgHr) return 'Maksimum nabız, ortalamadan küçük olamaz.';
   const pace = (a.durationSec / 60) / a.distanceKm;
-  if (pace < 2) return 'Tempo gerçekçi değil (2 dk/km altı). Mesafe ya da süreyi kontrol et.';
+  if (pace < 2) {
+    return usesKmh()
+      ? 'Hız gerçekçi değil (30 km/sa üstü). Mesafe ya da süreyi kontrol et.'
+      : 'Tempo gerçekçi değil (2 dk/km altı). Mesafe ya da süreyi kontrol et.';
+  }
   return null;
 }
 
@@ -417,7 +457,9 @@ function updatePreview() {
   }
   const m = S.withMetrics(a);
   const eff = m.beatsPerKm ? ` · ${Math.round(m.beatsPerKm)} atış/km` : '';
-  out.textContent = `Tempo ${fmtPaceUnit(m.pace)} · ${fmtNum(m.speedKmh, 1)} km/sa${eff}`;
+  out.textContent = usesKmh()
+    ? `Hız ${fmtSpeedKmh(m.speedKmh)} · tempo ${fmtPaceUnit(m.pace)}${eff}`
+    : `Tempo ${fmtPaceUnit(m.pace)} · ${fmtSpeedKmh(m.speedKmh)}${eff}`;
 }
 
 function resetForm() {
@@ -513,6 +555,7 @@ function bind() {
       age: Number($('#s-age').value) || null,
       weightKg: Number($('#s-weight').value) || null,
       sex: $('#s-sex').value === 'female' ? 'female' : 'male',
+      speedUnit: $('#s-speedunit').value === 'pace' ? 'pace' : 'kmh',
       weeklyGoalKm: Number($('#s-weekly').value) || 0,
       restHr: Number($('#s-resthr').value) || null,
       maxHr: Number($('#s-maxhr').value) || null,
@@ -567,6 +610,7 @@ function syncSettingsForm() {
   $('#s-age').value = settings.age ?? '';
   $('#s-weight').value = settings.weightKg ?? '';
   $('#s-sex').value = settings.sex === 'female' ? 'female' : 'male';
+  $('#s-speedunit').value = settings.speedUnit === 'pace' ? 'pace' : 'kmh';
   $('#s-weekly').value = settings.weeklyGoalKm ?? '';
   $('#s-resthr').value = settings.restHr ?? '';
   const est = estimatedMaxHr(Number(settings.age));

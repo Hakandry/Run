@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS = {
   age: null,
   weightKg: null,
   sex: 'male',
+  speedUnit: 'kmh',   // 'kmh' (araç göstergesi gibi) veya 'pace' (dk/km)
 };
 
 const EMPTY = { version: 1, activities: [], settings: { ...DEFAULT_SETTINGS } };

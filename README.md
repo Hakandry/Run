@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.1.0
+**Sürüm:** v0.1.1
 
 ## Neler var
 
@@ -20,6 +20,10 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
   bir önceki aktivite, koşu/yürüyüş ortalamaları.
 - **Nabız verimi (atış/km):** `ortalama nabız × tempo`. Aynı mesafeyi kaç kalp atışıyla
   götürdüğünü söyler; düştükçe kondisyon iyileşiyor demektir.
+- **Hız gösterimi:** varsayılan **km/sa** (araç göstergesi gibi); Ayarlar'dan dk/km
+  temposuna çevrilebilir. Seçim; özet, liste, kıyas tabloları, rekorlar, grafik ve
+  puan ekranının tamamına uygulanır. Fark yüzdeleri gösterilen büyüklüğe göre
+  hesaplanır: km/sa'da artış, dk/km'de azalış iyileşme sayılır.
 - **Liste:** düzenleme, silme, türe göre filtre.
 - **Veri:** JSON dışa/içe aktarma (içe aktarma birleştirir), tümünü silme.
 - **PWA:** ana ekrana eklenebilir, service worker ile çevrimdışı açılır.

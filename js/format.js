@@ -34,6 +34,10 @@ export function fmtPaceUnit(paceMin) {
   return p === '—' ? p : `${p} /km`;
 }
 
+export function fmtSpeedKmh(kmh) {
+  return Number.isFinite(kmh) && kmh > 0 ? `${fmtNum(kmh, 1)} km/sa` : '—';
+}
+
 export function fmtHr(v) {
   return Number.isFinite(v) && v > 0 ? `${Math.round(v)} bpm` : '—';
 }

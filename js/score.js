@@ -216,7 +216,7 @@ export function scoreComment(result, activity) {
   }
 
   const tips = {
-    load: 'Yükü artırmak için süreyi ya da temponu kademeli yükselt.',
+    load: 'Yükü artırmak için süreyi ya da hızını kademeli yükselt.',
     intensity: activity.type === 'run'
       ? 'Şiddet düşük kalmış; nabzını rezervinin %60–85 bandına taşımayı dene.'
       : 'Şiddet düşük kalmış; biraz daha tempolu yürü.',
