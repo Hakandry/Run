@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.3.1
+**Sürüm:** v0.3.2
 
 ## Neler var
 
@@ -31,6 +31,14 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
   temposuna çevrilebilir. Seçim; özet, liste, kıyas tabloları, rekorlar, grafik ve
   puan ekranının tamamına uygulanır. Fark yüzdeleri gösterilen büyüklüğe göre
   hesaplanır: km/sa'da artış, dk/km'de azalış iyileşme sayılır.
+- **Takvim:** başlıktaki takvim düğmesinden açılır. Antrenman yapılan günler türüne
+  göre renkli noktayla işaretlenir; bir güne dokununca o günün antrenmanları altta
+  listelenir, puan rozetine dokununca puan ekranı açılır. Ay başlığındaki oklarla
+  aylar arasında gezinilir, üstte o ayın toplamları görünür.
+- **Hedefler ve rozetler:** tek bir antrenmanda 1 km, 3 km, 5 km ve 10 km koşu.
+  Başarıldığında rozet açılır; kilitli rozetler en uzun koşuna göre ilerleme çubuğu
+  ve kalan mesafeyi gösterir. Yeni rozet kazandıran bir kayıt girdiğinde puan
+  ekranının üstünde kutlama şeridi çıkar.
 - **Liste:** düzenleme, silme, türe göre filtre.
 - **Veri:** JSON dışa/içe aktarma (içe aktarma birleştirir), tümünü silme.
 - **PWA:** ana ekrana eklenebilir, service worker ile çevrimdışı açılır.
@@ -64,6 +72,8 @@ js/app.js               yönlendirme, form, render, olaylar
 js/storage.js           localStorage katmanı, doğrulama, dışa/içe aktarma
 js/stats.js             türetilmiş metrikler, dönem/rekor hesapları, koç mesajı
 js/chart.js             bağımlılıksız SVG grafik
+js/badges.js            mesafe rozetleri ve ilerleme durumu
+js/calendar.js          ay takvimi ızgarası
 js/format.js            tr-TR biçimlendiriciler
 sw.js                   çevrimdışı önbellek
 manifest.webmanifest    PWA manifesti
@@ -88,6 +98,19 @@ eşdeğeri; çubuk bir sonraki kiloya ne kadar kaldığını gösterir. 7.700 kc
 kabulü Wishnofsky'nin 1958 tarihli hesabıdır — pratik bir kestirimdir, ölçüm
 değildir; gerçek kilo değişimi beslenmeye, su dengesine ve metabolik uyuma bağlıdır.
 Kart bunu kendi üzerinde de yazar.
+
+## Rozetler
+
+Rozetler ayrıca saklanmaz; her açılışta kayıtlardan hesaplanır. Bir rozeti, hedefi
+**ilk kez** geçtiğin koşu kazandırır — kaydı silersen ya da mesafeyi düzeltirsen
+rozet durumu da kendiliğinden düzelir. Sadece koşu türündeki kayıtlar sayılır.
+
+| Rozet | Hedef |
+|---|---|
+| İlk kilometre | Tek antrenmanda 1 km |
+| Üç bin | Tek antrenmanda 3 km |
+| Beşlik | Tek antrenmanda 5 km |
+| Onluk | Tek antrenmanda 10 km |
 
 ## Renk sistemi
 

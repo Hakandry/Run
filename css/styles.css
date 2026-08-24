@@ -339,7 +339,7 @@ button:active { transform: translateY(1px); }
 /* Tabs */
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   background: rgba(15, 17, 21, 0.94);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--line);
@@ -348,14 +348,14 @@ button:active { transform: translateY(1px); }
 .tabbar button {
   border: 0; background: none; border-radius: 0;
   display: grid; gap: 2px; justify-items: center;
-  padding: 8px 0 10px; color: var(--muted); font-size: 0.68rem;
+  padding: 8px 0 10px; color: var(--muted); font-size: 0.64rem;
 }
-.tabbar button span { font-size: 1.15rem; line-height: 1.2; }
+.tabbar button span { font-size: 1.1rem; line-height: 1.2; }
 .tabbar button { position: relative; transition: color 0.15s ease; }
 .tabbar button.active { color: var(--tab-color, var(--accent)); }
 .tabbar button.active::before {
   content: ''; position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-  width: 42px; height: 30px; border-radius: 999px;
+  width: 38px; height: 30px; border-radius: 999px;
   background: var(--tab-color, var(--accent)); opacity: 0.14;
 }
 .tabbar button.active::after {
@@ -367,6 +367,7 @@ button:active { transform: translateY(1px); }
 .tabbar button[data-view="add"] { --tab-color: var(--walk); }
 .tabbar button[data-view="list"] { --tab-color: var(--dist); }
 .tabbar button[data-view="compare"] { --tab-color: var(--speed); }
+.tabbar button[data-view="badges"] { --tab-color: var(--energy); }
 .tabbar button[data-view="settings"] { --tab-color: var(--hr); }
 
 .toast {
@@ -457,4 +458,97 @@ button:active { transform: translateY(1px); }
 
 @media (prefers-reduced-motion: reduce) {
   .score-ring .value, .part .bar i { transition: none; }
+}
+
+
+/* ---- Başlık düğmeleri ---- */
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  display: grid; place-items: center; width: 38px; height: 38px; padding: 0;
+  border-radius: 12px; color: var(--muted);
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.on { color: var(--run); border-color: color-mix(in srgb, var(--run) 45%, var(--line)); }
+
+/* ---- Takvim ---- */
+.cal-head {
+  display: grid; grid-template-columns: 40px 1fr 40px;
+  align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.cal-title { text-align: center; font-size: 1.05rem; text-transform: capitalize; }
+.cal-head .nav { padding: 6px 0; font-size: 1.3rem; line-height: 1; }
+.cal-stats {
+  font-size: 0.8rem; color: var(--muted); margin-bottom: 12px;
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+}
+.cal-stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-weekday {
+  text-align: center; font-size: 0.68rem; color: var(--muted);
+  padding-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.cal-cell {
+  aspect-ratio: 1; padding: 0; display: grid; align-content: center; justify-items: center;
+  gap: 3px; border-radius: 10px; border: 1px solid transparent;
+  background: var(--surface-2); color: var(--muted);
+  font-size: 0.82rem; font-variant-numeric: tabular-nums;
+}
+.cal-cell.empty { background: none; }
+.cal-cell:disabled { cursor: default; opacity: 0.55; }
+.cal-cell.has {
+  color: var(--text); font-weight: 650;
+  background: color-mix(in srgb, var(--run) 13%, var(--surface-2));
+}
+.cal-cell.today { border-color: var(--speed); color: var(--speed); }
+.cal-cell.selected {
+  border-color: var(--run); background: color-mix(in srgb, var(--run) 26%, var(--surface-2));
+  color: var(--text);
+}
+.cal-cell .dots { display: flex; gap: 3px; height: 6px; align-items: center; }
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.dot.run { background: var(--run); }
+.dot.walk { background: var(--walk); }
+.dot.more { background: var(--muted); }
+.dot.today-dot { background: var(--speed); }
+.cal-legend {
+  display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px;
+  font-size: 0.75rem; color: var(--muted);
+}
+.cal-legend span { display: flex; align-items: center; gap: 6px; }
+.cal-day-title { font-size: 0.95rem; font-weight: 650; margin-bottom: 10px; }
+
+/* ---- Rozetler ---- */
+.badge-summary {
+  display: grid; gap: 10px; margin-bottom: 14px; padding: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+}
+.badge-summary .count { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.badge-summary .count b { color: var(--energy); }
+
+.badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.badge {
+  position: relative; overflow: hidden; text-align: center;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 16px 12px 14px;
+  display: grid; gap: 8px; justify-items: center;
+}
+.badge.on {
+  border-color: color-mix(in srgb, var(--badge-color) 55%, var(--line));
+  background:
+    radial-gradient(100% 80% at 50% 0%, color-mix(in srgb, var(--badge-color) 22%, transparent), transparent 70%),
+    var(--surface);
+}
+.badge .medal { width: 62px; height: 62px; }
+.badge.off .medal { opacity: 0.38; filter: grayscale(1); }
+.badge .bname { font-weight: 700; font-size: 1.05rem; color: var(--badge-color); }
+.badge.off .bname { color: var(--muted); }
+.badge .btitle { font-size: 0.78rem; color: var(--text); }
+.badge .bmeta { font-size: 0.72rem; color: var(--muted); line-height: 1.4; }
+.badge .bbar { width: 100%; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.badge .bbar i { display: block; height: 100%; border-radius: 999px; background: var(--badge-color); opacity: 0.75; }
+.badge .earned-tag {
+  font-size: 0.7rem; font-weight: 650; color: var(--badge-color);
+  border: 1px solid currentColor; border-radius: 999px; padding: 2px 9px;
 }

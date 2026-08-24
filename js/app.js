@@ -4,12 +4,14 @@ import { renderChart } from './chart.js';
 import {
   scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr, metsFor, kcalFor,
 } from './score.js';
+import { badgeState, earnedIds, newlyEarned } from './badges.js';
+import { renderMonth, monthLabel, monthRange } from './calendar.js';
 import {
   TYPE_LABEL, TYPE_ICON, fmtNum, fmtKm, fmtDuration, fmtPace, fmtPaceUnit, fmtSpeedKmh,
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.3.1';
+const APP_VERSION = '0.3.2';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -18,6 +20,8 @@ let scores = new Map();
 let settings = store.getSettings();
 let editingId = null;
 let lastScoreId = null;
+let calCursor = null;      // görüntülenen ay
+let calSelected = null;    // seçili gün (iso)
 
 /* ---------- Görünüm yönetimi ---------- */
 
@@ -102,6 +106,8 @@ function refresh() {
   renderSummary();
   renderList();
   renderCompare();
+  renderCalendar();
+  renderBadges();
   renderDataInfo();
 }
 
@@ -335,7 +341,7 @@ const PART_DETAIL = (r, a) => ({
     : 'Kıyas için aynı türde en az 2 nabızlı kayıt gerekiyor',
 });
 
-function renderScoreView(id) {
+function renderScoreView(id, freshBadges = []) {
   const box = $('#scoreCard');
   const a = activities.find((x) => x.id === id) || activities[0];
   if (!a) {
@@ -372,7 +378,17 @@ function renderScoreView(id) {
     ['Maks. nabız (kullanılan)', `${r.detail.maxHrUsed || '—'}${r.detail.maxHrEstimated ? ' (tahmin)' : ''}`, HUE.hr],
   ].map(([k, v, hue]) => `<div class="chip" style="--hue:${hue}"><b>${k}</b>${v}</div>`).join('');
 
+  const badgeBanner = freshBadges.length ? `
+    <div class="card" style="--tier-color:${freshBadges[0].color};border-color:${freshBadges[0].color}">
+      <div class="card-head"><h3>🏅 Yeni rozet</h3></div>
+      <p class="muted" style="color:var(--text)">
+        ${freshBadges.map((b) => `<b>${b.name}</b> — ${b.title}`).join('<br>')}
+      </p>
+      <div class="actions"><button class="ghost" data-go="badges">Rozetleri gör</button></div>
+    </div>` : '';
+
   box.innerHTML = `
+    ${badgeBanner}
     <div class="score-card" style="${style}">
       <div class="score-when">${TYPE_ICON[a.type]} ${TYPE_LABEL[a.type]} · ${fmtDate(a.date)}</div>
       <svg class="score-ring" viewBox="0 0 168 168" role="img"
@@ -559,6 +575,128 @@ function renderDataInfo() {
     : 'Henüz veri yok.';
 }
 
+/* ---------- Takvim ---------- */
+
+function activitiesByDate() {
+  const map = new Map();
+  for (const act of activities) {
+    if (!map.has(act.date)) map.set(act.date, []);
+    map.get(act.date).push(act);
+  }
+  return map;
+}
+
+function renderCalendar() {
+  if (!calCursor) {
+    const now = new Date();
+    calCursor = { year: now.getFullYear(), month: now.getMonth() };
+  }
+  const { year, month } = calCursor;
+  const byDate = activitiesByDate();
+
+  $('#t-calendar').textContent = monthLabel(year, month);
+  $('#calendar').innerHTML = renderMonth(year, month, byDate, calSelected, todayIso());
+
+  // Ay özeti
+  const { from, to } = monthRange(year, month);
+  const inMonth = activities.filter((act) => act.date >= from && act.date < to);
+  const sum = S.summarize(inMonth);
+  $('#calMonthStats').innerHTML = inMonth.length
+    ? [
+        `<span><b>${inMonth.length}</b> antrenman</span>`,
+        `<span><b>${fmtKm(sum.totalKm)}</b></span>`,
+        `<span><b>${fmtDuration(sum.totalSec)}</b></span>`,
+        `<span><b>${fmtKcal(sumBy(inMonth, kcalOf))}</b></span>`,
+        `<span><b>${new Set(inMonth.map((x) => x.date)).size}</b> aktif gün</span>`,
+      ].join('')
+    : '<span>Bu ayda kayıt yok.</span>';
+
+  renderCalendarDay();
+}
+
+function renderCalendarDay() {
+  const box = $('#calDay');
+  if (!calSelected) {
+    box.innerHTML = '<p class="muted">İşaretli bir güne dokun, o günün antrenmanlarını göster.</p>';
+    return;
+  }
+  const list = activitiesByDate().get(calSelected) || [];
+  if (!list.length) {
+    box.innerHTML = `<div class="card"><p class="empty">${fmtDate(calSelected)} — kayıt yok.</p></div>`;
+    return;
+  }
+
+  box.innerHTML = `<div class="card">
+    <div class="cal-day-title">${fmtDate(calSelected)} · ${list.length} antrenman</div>
+    <div class="list">${list.map((act) => {
+      const r = scores.get(act.id);
+      const metrics = [
+        ['Mesafe', fmtKm(act.distanceKm), HUE.dist],
+        ['Süre', fmtDuration(act.durationSec), HUE.time],
+        [speedWord(), fmtSpeed(act.pace), HUE.speed],
+        ['Ort. nabız', fmtHr(act.avgHr), HUE.hr],
+        kcalOf(act) ? ['Kalori', fmtKcal(kcalOf(act)), HUE.energy] : null,
+      ].filter(Boolean);
+      return `<article class="item" style="--type-color:${act.type === 'walk' ? HUE.walk : HUE.run}">
+        <div class="item-head">
+          <span class="item-title">${TYPE_ICON[act.type]} ${TYPE_LABEL[act.type]}</span>
+          <button class="score-badge" data-score="${act.id}"
+                  style="color:${r.tier.color};background:${r.tier.tint}">
+            ${fmtNum(r.score, 1)} <small>${r.tier.name}</small>
+          </button>
+        </div>
+        <div class="item-metrics">${metrics
+          .map(([k, v, hue]) => `<span data-hue style="--hue:${hue}"><b>${k}</b> ${v}</span>`).join('')}</div>
+        ${act.note ? `<p class="item-note">${escapeHtml(act.note)}</p>` : ''}
+      </article>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+/* ---------- Rozetler ---------- */
+
+const MEDAL = (color, on) => `
+  <svg class="medal" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <path d="M16 3 L27 25 M48 3 L37 25" stroke="${on ? color : '#64748b'}" stroke-width="6"
+          stroke-linecap="round" fill="none" opacity="${on ? 0.85 : 0.55}"/>
+    <circle cx="32" cy="41" r="19" fill="${on ? color : 'none'}" fill-opacity="${on ? 0.16 : 0}"
+            stroke="${on ? color : '#64748b'}" stroke-width="4"/>
+    ${on ? `<path d="M23 41 L29 47 L42 34" fill="none" stroke="${color}" stroke-width="5"
+            stroke-linecap="round" stroke-linejoin="round"/>`
+         : `<path d="M32 32 v10 M32 48 v0.5" stroke="#64748b" stroke-width="4"
+            stroke-linecap="round"/>`}
+  </svg>`;
+
+function renderBadges() {
+  const states = badgeState(activities);
+  const earned = states.filter((s) => s.earned).length;
+  const best = states[0]?.best || 0;
+  const next = states.find((s) => !s.earned);
+
+  $('#badgeSummary').innerHTML = `
+    <div class="badge-summary">
+      <div class="count"><b>${earned}</b> / ${states.length} rozet</div>
+      <div class="goal-bar"><i style="width:${(earned / states.length) * 100}%"></i></div>
+      <div class="muted">${best > 0
+        ? `En uzun koşun ${fmtKm(best)}.${next
+            ? ` Sıradaki hedef ${next.badge.name}: ${fmtKm(next.remaining)} daha.`
+            : ' Tüm hedefleri tamamladın.'}`
+        : 'Henüz koşu kaydın yok. İlk koşunu ekle, rozetler açılmaya başlasın.'}</div>
+    </div>`;
+
+  $('#badgeGrid').innerHTML = states.map(({ badge, earned: on, activity, progress, remaining }) => `
+    <div class="badge ${on ? 'on' : 'off'}" style="--badge-color:${badge.color}">
+      ${MEDAL(badge.color, on)}
+      <div class="bname">${badge.name}</div>
+      <div class="btitle">${badge.title}</div>
+      ${on
+        ? `<div class="earned-tag">Kazanıldı</div>
+           <div class="bmeta">${fmtDate(activity.date)}<br>${fmtKm(activity.distanceKm)} · ${fmtDuration(activity.durationSec)}</div>`
+        : `<div class="bbar"><i style="width:${(progress * 100).toFixed(0)}%"></i></div>
+           <div class="bmeta">${badge.desc}<br>${fmtKm(remaining)} kaldı</div>`}
+    </div>`).join('');
+}
+
 /* ---------- Form ---------- */
 
 function readForm() {
@@ -667,12 +805,19 @@ function bind() {
       errBox.hidden = false;
       return;
     }
+    const before = earnedIds(activities);
     const saved = store.upsertActivity(a);
     const wasEdit = Boolean(editingId);
     resetForm();
     refresh();
-    toast(wasEdit ? 'Aktivite güncellendi.' : 'Aktivite kaydedildi.');
-    renderScoreView(saved.id);
+
+    const fresh = newlyEarned(before, activities);
+    if (fresh.length) {
+      toast(`🏅 Yeni rozet: ${fresh.map((b) => b.name).join(', ')}`);
+    } else {
+      toast(wasEdit ? 'Aktivite güncellendi.' : 'Aktivite kaydedildi.');
+    }
+    renderScoreView(saved.id, fresh);
     showView('score');
   });
 
@@ -694,6 +839,42 @@ function bind() {
       refresh();
       toast('Kayıt silindi.');
     }
+  });
+
+  $('#calendarBtn').addEventListener('click', () => {
+    if (!calSelected) {
+      // İlk açılışta en son antrenmanın ayına ve gününe git
+      const last = activities[0];
+      if (last) {
+        const d = new Date(`${last.date}T00:00:00`);
+        calCursor = { year: d.getFullYear(), month: d.getMonth() };
+        calSelected = last.date;
+      }
+    }
+    renderCalendar();
+    showView('calendar');
+  });
+
+  const shiftMonth = (step) => {
+    const d = new Date(calCursor.year, calCursor.month + step, 1);
+    calCursor = { year: d.getFullYear(), month: d.getMonth() };
+    renderCalendar();
+  };
+  $('#calPrev').addEventListener('click', () => shiftMonth(-1));
+  $('#calNext').addEventListener('click', () => shiftMonth(1));
+
+  $('#calendar').addEventListener('click', (e) => {
+    const cell = e.target.closest('button[data-date]');
+    if (!cell || cell.disabled) return;
+    calSelected = cell.dataset.date === calSelected ? null : cell.dataset.date;
+    renderCalendar();
+  });
+
+  $('#calDay').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-score]');
+    if (!btn) return;
+    renderScoreView(btn.dataset.score);
+    showView('score');
   });
 
   $('#goalBar').addEventListener('click', (e) => {
