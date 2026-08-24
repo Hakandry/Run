@@ -4,14 +4,14 @@ import { renderChart } from './chart.js';
 import {
   scoreActivity, scoreComment, COMPONENT_LABELS, estimatedMaxHr, metsFor, kcalFor,
 } from './score.js';
-import { badgeState, earnedIds, newlyEarned } from './badges.js';
+import { badgeState, earnedIds, newlyEarned, GROUPS, LEVELS } from './badges.js';
 import { renderMonth, monthLabel, monthRange } from './calendar.js';
 import {
   TYPE_LABEL, TYPE_ICON, fmtNum, fmtKm, fmtDuration, fmtPace, fmtPaceUnit, fmtSpeedKmh,
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.3.2';
+const APP_VERSION = '0.3.3';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -667,34 +667,75 @@ const MEDAL = (color, on) => `
             stroke-linecap="round"/>`}
   </svg>`;
 
+function badgeProgressText(state) {
+  const { badge, remaining } = state;
+  if (badge.kind === 'weekly') return `${Math.ceil(remaining)} antrenman daha`;
+  if (badge.kind === 'streak') return `${Math.ceil(remaining)} gün daha`;
+  return `${fmtKm(remaining)} kaldı`;
+}
+
+function badgeEarnedText(state) {
+  const { badge, activity, context, current } = state;
+  if (badge.kind === 'weekly') {
+    return `En yoğun haftan: ${current} antrenman<br>${fmtDate(context.weekStart)} haftası`;
+  }
+  if (badge.kind === 'streak') {
+    return `En uzun serin: ${current} gün<br>${fmtDate(context.start)} – ${fmtDate(context.end)}`;
+  }
+  if (badge.kind === 'total') {
+    return activity ? `${fmtDate(activity.date)}<br>toplamda ${fmtKm(current)}` : `Toplam ${fmtKm(current)}`;
+  }
+  return `${fmtDate(activity.date)}<br>${fmtKm(activity.distanceKm)} · ${fmtDuration(activity.durationSec)}`;
+}
+
 function renderBadges() {
   const states = badgeState(activities);
-  const earned = states.filter((s) => s.earned).length;
-  const best = states[0]?.best || 0;
-  const next = states.find((s) => !s.earned);
+  const earned = states.filter((s) => s.earned);
+  // En üst kademe: kazanılanlar içinde LEVELS sırasında en ileride olan
+  const topLevel = earned.reduce((best, s) =>
+    (LEVELS.indexOf(s.badge.level) > LEVELS.indexOf(best) ? s.badge.level : best), LEVELS[0]);
+  // Sıradaki hedef: kilitliler içinde tamamlanmaya en yakın olan
+  const next = states.filter((s) => !s.earned)
+    .reduce((best, s) => (!best || s.progress > best.progress ? s : best), null);
 
   $('#badgeSummary').innerHTML = `
     <div class="badge-summary">
-      <div class="count"><b>${earned}</b> / ${states.length} rozet</div>
-      <div class="goal-bar"><i style="width:${(earned / states.length) * 100}%"></i></div>
-      <div class="muted">${best > 0
-        ? `En uzun koşun ${fmtKm(best)}.${next
-            ? ` Sıradaki hedef ${next.badge.name}: ${fmtKm(next.remaining)} daha.`
-            : ' Tüm hedefleri tamamladın.'}`
-        : 'Henüz koşu kaydın yok. İlk koşunu ekle, rozetler açılmaya başlasın.'}</div>
+      <div class="count"><b>${earned.length}</b> / ${states.length} rozet</div>
+      <div class="goal-bar"><i style="width:${(earned.length / states.length) * 100}%"></i></div>
+      <div class="muted">${earned.length
+        ? `Ulaştığın en üst kademe: <b style="color:var(--text)">${topLevel}</b>.${next
+            ? ` Sıradaki: <b style="color:var(--text)">${next.badge.title} (${next.badge.name})</b> — ${badgeProgressText(next)}.`
+            : ' Tüm rozetleri topladın.'}`
+        : 'Henüz rozet yok. İlk kaydını ekle, merdiven açılmaya başlasın.'}</div>
     </div>`;
 
-  $('#badgeGrid').innerHTML = states.map(({ badge, earned: on, activity, progress, remaining }) => `
-    <div class="badge ${on ? 'on' : 'off'}" style="--badge-color:${badge.color}">
-      ${MEDAL(badge.color, on)}
-      <div class="bname">${badge.name}</div>
-      <div class="btitle">${badge.title}</div>
-      ${on
-        ? `<div class="earned-tag">Kazanıldı</div>
-           <div class="bmeta">${fmtDate(activity.date)}<br>${fmtKm(activity.distanceKm)} · ${fmtDuration(activity.durationSec)}</div>`
-        : `<div class="bbar"><i style="width:${(progress * 100).toFixed(0)}%"></i></div>
-           <div class="bmeta">${badge.desc}<br>${fmtKm(remaining)} kaldı</div>`}
-    </div>`).join('');
+  $('#badgeGrid').innerHTML = GROUPS.map((group) => {
+    const list = states.filter((s) => s.badge.group === group.id);
+    const got = list.filter((s) => s.earned).length;
+    return `<section class="badge-group">
+      <div class="badge-group-head">
+        <h3>${group.name} <span class="gcount">${got}/${list.length}</span></h3>
+        <p class="muted">${group.desc}</p>
+      </div>
+      <div class="badge-row">
+        ${list.map((state) => {
+          const { badge, earned: on, progress } = state;
+          return `<div class="badge ${on ? 'on' : 'off'}" style="--badge-color:${badge.color}">
+            ${MEDAL(badge.color, on)}
+            <div class="bname">${badge.name}</div>
+            <div class="btitle">${badge.title}</div>
+            <div class="blevel">${badge.level}</div>
+            <div class="bnote">${badge.note}</div>
+            ${on
+              ? `<div class="earned-tag">Kazanıldı</div>
+                 <div class="bmeta">${badgeEarnedText(state)}</div>`
+              : `<div class="bbar"><i style="width:${(progress * 100).toFixed(0)}%"></i></div>
+                 <div class="bmeta">${badgeProgressText(state)}</div>`}
+          </div>`;
+        }).join('')}
+      </div>
+    </section>`;
+  }).join('');
 }
 
 /* ---------- Form ---------- */

@@ -527,9 +527,17 @@ button:active { transform: translateY(1px); }
 .badge-summary .count { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .badge-summary .count b { color: var(--energy); }
 
-.badge-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.badge-grid { display: grid; gap: 22px; }
+.badge-group-head { margin-bottom: 10px; }
+.badge-group-head h3 { display: flex; align-items: baseline; gap: 8px; }
+.badge-group-head .gcount {
+  font-size: 0.75rem; font-weight: 650; color: var(--energy);
+  font-variant-numeric: tabular-nums;
+}
+.badge-group-head p { margin: 3px 0 0; }
+.badge-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .badge {
-  position: relative; overflow: hidden; text-align: center;
+  position: relative; overflow: hidden; text-align: center; align-content: start;
   border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--surface); padding: 16px 12px 14px;
   display: grid; gap: 8px; justify-items: center;
@@ -540,11 +548,20 @@ button:active { transform: translateY(1px); }
     radial-gradient(100% 80% at 50% 0%, color-mix(in srgb, var(--badge-color) 22%, transparent), transparent 70%),
     var(--surface);
 }
-.badge .medal { width: 62px; height: 62px; }
+.badge .medal { width: 54px; height: 54px; }
 .badge.off .medal { opacity: 0.38; filter: grayscale(1); }
 .badge .bname { font-weight: 700; font-size: 1.05rem; color: var(--badge-color); }
 .badge.off .bname { color: var(--muted); }
 .badge .btitle { font-size: 0.78rem; color: var(--text); }
+.badge .blevel {
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--badge-color); opacity: 0.85;
+}
+.badge.off .blevel { color: var(--muted); opacity: 1; }
+.badge .bnote {
+  font-size: 0.72rem; color: var(--muted); line-height: 1.45;
+  border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px;
+}
 .badge .bmeta { font-size: 0.72rem; color: var(--muted); line-height: 1.4; }
 .badge .bbar { width: 100%; height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
 .badge .bbar i { display: block; height: 100%; border-radius: 999px; background: var(--badge-color); opacity: 0.75; }
