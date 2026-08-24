@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="description" content="Koşu ve yürüyüşlerini kaydet, nabız ve mesafe kıyaslamalarını gör.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Koç">
+<link rel="apple-touch-icon" href="./icons/icon.svg">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./css/styles.css">
+<title>Koç — Kişisel Koşu & Yürüyüş Koçu</title>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="./icons/icon.svg" alt="" width="28" height="28">
+    <div>
+      <h1>Koç</h1>
+      <span class="ver" id="appVersion">v0.0.1</span>
+    </div>
+  </div>
+  <button class="ghost" id="installBtn" hidden>Yükle</button>
+</header>
+
+<main>
+  <!-- ÖZET -->
+  <section id="view-summary" class="view" aria-labelledby="t-summary">
+    <h2 id="t-summary" class="sr-only">Özet</h2>
+
+    <div id="coachCard" class="card coach">
+      <div class="coach-title">Koç notu</div>
+      <p id="coachMsg">Henüz kayıt yok. İlk aktiviteni ekle, kıyaslamaya hemen başlayalım.</p>
+    </div>
+
+    <div class="grid stats" id="weekStats"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Son 12 aktivite</h3>
+        <select id="chartMetric" aria-label="Grafik metriği">
+          <option value="distanceKm">Mesafe (km)</option>
+          <option value="pace">Tempo (dk/km)</option>
+          <option value="avgHr">Ort. nabız</option>
+          <option value="beatsPerKm">Nabız verimi (atış/km)</option>
+        </select>
+      </div>
+      <div id="chart" class="chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Kişisel rekorlar</h3></div>
+      <div id="records" class="records"></div>
+    </div>
+  </section>
+
+  <!-- KAYIT -->
+  <section id="view-add" class="view" hidden aria-labelledby="t-add">
+    <h2 id="t-add">Aktivite ekle</h2>
+    <form id="activityForm" class="card form" novalidate>
+      <input type="hidden" id="f-id">
+      <div class="segmented" role="radiogroup" aria-label="Aktivite türü">
+        <label><input type="radio" name="type" value="run" checked><span>🏃 Koşu</span></label>
+        <label><input type="radio" name="type" value="walk"><span>🚶 Yürüyüş</span></label>
+      </div>
+
+      <label class="field">
+        <span>Tarih</span>
+        <input type="date" id="f-date" required>
+      </label>
+
+      <label class="field">
+        <span>Mesafe (km)</span>
+        <input type="number" id="f-distance" inputmode="decimal" step="0.01" min="0.01" placeholder="5.2" required>
+      </label>
+
+      <fieldset class="field duration">
+        <legend>Süre</legend>
+        <div class="row">
+          <label><input type="number" id="f-h" inputmode="numeric" min="0" max="23" placeholder="0"><span>sa</span></label>
+          <label><input type="number" id="f-m" inputmode="numeric" min="0" max="59" placeholder="32"><span>dk</span></label>
+          <label><input type="number" id="f-s" inputmode="numeric" min="0" max="59" placeholder="10"><span>sn</span></label>
+        </div>
+      </fieldset>
+
+      <div class="row2">
+        <label class="field">
+          <span>Ort. nabız</span>
+          <input type="number" id="f-avghr" inputmode="numeric" min="30" max="240" placeholder="148">
+        </label>
+        <label class="field">
+          <span>Maks. nabız</span>
+          <input type="number" id="f-maxhr" inputmode="numeric" min="30" max="240" placeholder="171">
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Zorlanma (1–10)</span>
+        <input type="range" id="f-effort" min="1" max="10" step="1" value="5">
+        <output id="effortOut">5</output>
+      </label>
+
+      <label class="field">
+        <span>Not</span>
+        <textarea id="f-note" rows="2" placeholder="Hava, rota, hissiyat…"></textarea>
+      </label>
+
+      <p id="formPreview" class="preview"></p>
+      <p id="formError" class="error" role="alert" hidden></p>
+
+      <div class="actions">
+        <button type="submit" class="primary" id="saveBtn">Kaydet</button>
+        <button type="button" class="ghost" id="cancelEdit" hidden>Vazgeç</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- LİSTE -->
+  <section id="view-list" class="view" hidden aria-labelledby="t-list">
+    <div class="card-head">
+      <h2 id="t-list">Aktiviteler</h2>
+      <select id="listFilter" aria-label="Tür filtresi">
+        <option value="all">Tümü</option>
+        <option value="run">Koşu</option>
+        <option value="walk">Yürüyüş</option>
+      </select>
+    </div>
+    <div id="activityList" class="list"></div>
+  </section>
+
+  <!-- KIYAS -->
+  <section id="view-compare" class="view" hidden aria-labelledby="t-compare">
+    <h2 id="t-compare">Kıyasla</h2>
+    <div class="card">
+      <div class="card-head">
+        <h3>Dönem karşılaştırması</h3>
+        <select id="comparePeriod" aria-label="Dönem">
+          <option value="7">Son 7 gün</option>
+          <option value="14">Son 14 gün</option>
+          <option value="30" selected>Son 30 gün</option>
+        </select>
+      </div>
+      <div id="periodCompare" class="compare"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Son aktivite vs. önceki (aynı tür)</h3></div>
+      <div id="lastCompare" class="compare"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Tür ortalamaları</h3></div>
+      <div id="typeAverages" class="compare"></div>
+    </div>
+  </section>
+
+  <!-- AYARLAR -->
+  <section id="view-settings" class="view" hidden aria-labelledby="t-settings">
+    <h2 id="t-settings">Ayarlar</h2>
+    <div class="card form">
+      <label class="field">
+        <span>Haftalık mesafe hedefi (km)</span>
+        <input type="number" id="s-weekly" min="0" step="0.5">
+      </label>
+      <label class="field">
+        <span>Dinlenme nabzı</span>
+        <input type="number" id="s-resthr" min="30" max="120">
+      </label>
+      <label class="field">
+        <span>Maksimum nabız</span>
+        <input type="number" id="s-maxhr" min="120" max="230">
+      </label>
+      <div class="actions"><button class="primary" id="saveSettings">Ayarları kaydet</button></div>
+    </div>
+
+    <div class="card form">
+      <h3>Veri</h3>
+      <p class="muted">Tüm veriler yalnızca bu cihazda saklanır. Yedek almayı unutma.</p>
+      <div class="actions">
+        <button class="ghost" id="exportBtn">Dışa aktar (JSON)</button>
+        <button class="ghost" id="importBtn">İçe aktar</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+        <button class="danger" id="wipeBtn">Tümünü sil</button>
+      </div>
+      <p class="muted" id="dataInfo"></p>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar" role="tablist">
+  <button role="tab" data-view="summary" class="active" aria-selected="true"><span>📊</span>Özet</button>
+  <button role="tab" data-view="add" aria-selected="false"><span>➕</span>Ekle</button>
+  <button role="tab" data-view="list" aria-selected="false"><span>📋</span>Liste</button>
+  <button role="tab" data-view="compare" aria-selected="false"><span>⚖️</span>Kıyas</button>
+  <button role="tab" data-view="settings" aria-selected="false"><span>⚙️</span>Ayar</button>
+</nav>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>

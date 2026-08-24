@@ -1,0 +1,17 @@
+{
+  "name": "Koç — Kişisel Koşu & Yürüyüş Koçu",
+  "short_name": "Koç",
+  "description": "Koşu ve yürüyüşlerini kaydet, nabız/mesafe/tempo kıyaslamalarını gör.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "lang": "tr",
+  "categories": ["health", "fitness", "sports"],
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icons/maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,58 @@
+// Basit önbellek: uygulama kabuğu offline çalışsın.
+const VERSION = 'koc-v0.0.1';
+const ASSETS = [
+  './',
+  './index.html',
+  './css/styles.css',
+  './js/app.js',
+  './js/storage.js',
+  './js/stats.js',
+  './js/chart.js',
+  './js/format.js',
+  './manifest.webmanifest',
+  './icons/icon.svg',
+  './icons/maskable.svg',
+];
+
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+// Gezinme isteklerinde önce ağ (güncel sürüm), aksi halde önbellek.
+self.addEventListener('fetch', (e) => {
+  const { request } = e;
+  if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
+
+  if (request.mode === 'navigate') {
+    e.respondWith(
+      fetch(request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(VERSION).then((c) => c.put(request, copy));
+          return res;
+        })
+        .catch(() => caches.match('./index.html').then((r) => r || caches.match('./')))
+    );
+    return;
+  }
+
+  e.respondWith(
+    caches.match(request).then((cached) =>
+      cached || fetch(request).then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(VERSION).then((c) => c.put(request, copy));
+        }
+        return res;
+      })
+    )
+  );
+});
