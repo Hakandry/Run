@@ -4,7 +4,7 @@ Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerl
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.3.3
+**Sürüm:** v0.3.4
 
 ## Neler var
 
@@ -35,8 +35,8 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
   göre renkli noktayla işaretlenir; bir güne dokununca o günün antrenmanları altta
   listelenir, puan rozetine dokununca puan ekranı açılır. Ay başlığındaki oklarla
   aylar arasında gezinilir, üstte o ayın toplamları görünür.
-- **Hedefler ve rozetler:** üç grupta 18 rozet — tek antrenmanda mesafe (1 km'den
-  100 km'ye), süreklilik ve toplam yol. Her rozette mesafenin neye denk geldiğini
+- **Hedefler ve rozetler:** iki grupta 14 rozet — tek antrenmanda mesafe (1 km'den
+  100 km'ye) ve süreklilik. Her rozette mesafenin neye denk geldiğini
   anlatan kısa bir not ve kademe etiketi (Başlangıç → Profesyonel) bulunur. Kilitli
   rozetler ilerleme çubuğu ve kalanı gösterir; yeni rozet kazandıran bir kayıt
   girildiğinde puan ekranının üstünde kutlama şeridi çıkar.
@@ -105,6 +105,10 @@ Kart bunu kendi üzerinde de yazar.
 Rozetler saklanmaz; her açılışta kayıtlardan hesaplanır. Bir kaydı silersen ya da
 düzeltirsen rozet durumu da kendiliğinden düzelir.
 
+**Mesafe rozetlerinin tek ölçütü, tek bir antrenmanda koşulan mesafedir.** Koşular
+birikmez: beş kez 3 km koşmak (toplam 15 km) 5 km rozetini açmaz; rozeti açan şey
+tek çıkışta o mesafeyi tamamlamaktır. Rozeti, hedefi ilk kez geçen koşu kazandırır.
+
 **Mesafe — tek bir antrenmanda koşu** (yürüyüşler sayılmaz)
 
 | Rozet | Hedef | Kademe | Not |
@@ -128,15 +132,6 @@ düzeltirsen rozet durumu da kendiliğinden düzelir.
 | Beşli hafta | Bir takvim haftasında 5 antrenman | Deneyimli |
 | Bir hafta seri | 7 gün üst üste aktif | Deneyimli |
 | Bir ay seri | 30 gün üst üste aktif | Profesyonel |
-
-**Toplam yol** (koşu + yürüyüş, birikimli)
-
-| Rozet | Hedef | Kademe |
-|---|---|---|
-| İlk yüz | 100 km | Amatör |
-| Yol alan | 250 km | Deneyimli |
-| Uzun yol | 500 km | İleri |
-| Bin kilometre | 1000 km | Profesyonel |
 
 Süreklilik rozetlerinde "en yoğun hafta" ve "en uzun seri" tüm geçmiş taranarak
 bulunur; kazanıldığında hangi hafta ya da hangi tarih aralığı olduğunu da yazar.

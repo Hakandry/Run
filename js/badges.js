@@ -1,15 +1,19 @@
-// Rozetler üç grupta toplanır:
-//   single  — tek bir antrenmanda ulaşılan koşu mesafesi (1 km'den 100 km'ye)
+// Rozetler iki grupta toplanır:
+//   single  — TEK BİR ANTRENMANDA koşulan mesafe (1 km'den 100 km'ye).
+//             Mesafeler birikmez: 5 x 3 km koşmak 5 km rozetini açmaz;
+//             rozeti açan şey tek çıkışta o mesafeyi tamamlamaktır.
 //   streak  — süreklilik (haftalık antrenman sayısı, üst üste aktif gün)
-//   total   — birikimli toplam mesafe (koşu + yürüyüş)
 //
 // Rozet verisi saklanmaz; her zaman kayıtlardan hesaplanır. Bir kaydı silersen
 // ya da düzeltirsen rozet durumu da kendiliğinden düzelir.
 
 export const GROUPS = [
-  { id: 'single', name: 'Mesafe', desc: 'Tek bir antrenmanda koştuğun mesafe' },
+  {
+    id: 'single',
+    name: 'Mesafe',
+    desc: 'Tek bir antrenmanda koştuğun mesafe — koşular birbirine eklenmez',
+  },
   { id: 'streak', name: 'Süreklilik', desc: 'Antrenmanı alışkanlığa çevirmek' },
-  { id: 'total', name: 'Toplam yol', desc: 'Bugüne kadar biriken mesafe (koşu + yürüyüş)' },
 ];
 
 // Kademeler, kolaydan zora. En üst kademeyi bulurken bu sıra kullanılır.
@@ -90,27 +94,6 @@ export const BADGES = [
     note: 'Otuz gün kesintisiz — alışkanlığın artık kendini taşıdığı eşik.',
   },
 
-  // --- Toplam yol ---
-  {
-    id: 'total-100', group: 'total', target: 100, unit: 'km', kind: 'total',
-    name: '100 km', title: 'İlk yüz', level: 'Amatör', color: '#38bdf8',
-    note: 'Maraton mesafesinin yaklaşık 2,4 katı.',
-  },
-  {
-    id: 'total-250', group: 'total', target: 250, unit: 'km', kind: 'total',
-    name: '250 km', title: 'Yol alan', level: 'Deneyimli', color: '#4ade80',
-    note: 'Yarı maratonun yaklaşık 12 katı.',
-  },
-  {
-    id: 'total-500', group: 'total', target: 500, unit: 'km', kind: 'total',
-    name: '500 km', title: 'Uzun yol', level: 'İleri', color: '#fbbf24',
-    note: 'Haftada 10 km ile yaklaşık bir yıl demek.',
-  },
-  {
-    id: 'total-1000', group: 'total', target: 1000, unit: 'km', kind: 'total',
-    name: '1000 km', title: 'Bin kilometre', level: 'Profesyonel', color: '#fb7185',
-    note: 'Maratonun 23 katı; ciddi koşucuların yıllık hacmi.',
-  },
 ];
 
 /* ---------- Ölçüler ---------- */
@@ -161,23 +144,12 @@ function firstQualifying(runs, km) {
   return qualified.reduce((earliest, a) => (!earliest || a.date < earliest.date ? a : earliest), null);
 }
 
-// Toplam mesafe hedefinin aşıldığı ilk gün (eskiden yeniye biriktirerek)
-function totalReachedOn(activities, km) {
-  const chronological = [...activities].sort((a, b) => a.date.localeCompare(b.date));
-  let sum = 0;
-  for (const a of chronological) {
-    sum += a.distanceKm;
-    if (sum >= km) return a;
-  }
-  return null;
-}
-
 /* ---------- Durum ---------- */
 
 export function badgeState(activities) {
   const runs = activities.filter((a) => a.type === 'run' && a.distanceKm > 0);
+  // Tek antrenmandaki en uzun koşu — mesafe rozetlerinin tek ölçütü budur.
   const bestRun = runs.reduce((m, a) => Math.max(m, a.distanceKm), 0);
-  const totalKm = activities.reduce((s, a) => s + a.distanceKm, 0);
   const week = bestWeek(activities);
   const streak = bestStreak(activities);
 
@@ -189,9 +161,6 @@ export function badgeState(activities) {
       current = week.count;
     } else if (badge.kind === 'streak') {
       current = streak.length;
-    } else if (badge.kind === 'total') {
-      current = totalKm;
-      activity = current >= badge.target ? totalReachedOn(activities, badge.target) : null;
     } else {
       current = bestRun;
       activity = firstQualifying(runs, badge.target);
