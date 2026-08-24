@@ -9,7 +9,7 @@ import {
   fmtHr, fmtDate, todayIso, fmtPercent,
 } from './format.js';
 
-const APP_VERSION = '0.3.0';
+const APP_VERSION = '0.3.1';
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => [...document.querySelectorAll(sel)];
 
@@ -136,7 +136,9 @@ function renderSummary() {
   const weekList = S.inRange(activities, S.weekStartIso(0), S.weekStartIso(-1));
   const lastWeekList = S.inRange(activities, S.weekStartIso(1), S.weekStartIso(0));
   const goal = Number(settings.weeklyGoalKm) || 0;
-  const goalPct = goal > 0 ? Math.min(999, (thisWeek.totalKm / goal) * 100) : null;
+  const goalList = settings.goalScope === 'run' ? weekList.filter((x) => x.type === 'run') : weekList;
+  const goalDone = sumBy(goalList, (x) => x.distanceKm);
+  const goalPct = goal > 0 ? Math.min(999, (goalDone / goal) * 100) : null;
 
   const scoreStat = recentScore();
   $('#weekStats').innerHTML = [
@@ -156,19 +158,7 @@ function renderSummary() {
   ].join('');
 
   // Haftalık hedef: yüzde yerine dolan çubuk
-  $('#goalBar').innerHTML = goalPct === null ? '' : `
-    <div class="goal">
-      <div class="goal-head">
-        <span>Haftalık hedef</span>
-        <b>${fmtKm(thisWeek.totalKm)} / ${goal} km</b>
-      </div>
-      <div class="goal-bar${goalPct >= 100 ? ' done' : ''}">
-        <i style="width:${Math.min(100, goalPct)}%"></i>
-      </div>
-      <div class="goal-note">${goalPct >= 100
-        ? `Hedefi %${fmtNum(goalPct - 100, 0)} aşarak tamamladın.`
-        : `Hedefe ${fmtKm(goal - thisWeek.totalKm)} kaldı · %${fmtNum(goalPct, 0)}`}</div>
-    </div>`;
+  renderGoalCard(goal, goalDone, goalPct);
 
   renderFatCard();
   renderMetricChart();
@@ -186,6 +176,57 @@ function recentScore() {
     `<div class="k">Son 30 gün ort. puan</div>` +
     `<div class="v tinted">${fmtNum(avg, 1)}</div>` +
     `<div class="d"><span class="flat">son antrenman ${fmtNum(scores.get(recent[0].id).score, 1)} · ${tier.name}</span></div></div>`;
+}
+
+const GOAL_PRESETS = [10, 15, 20, 25, 30, 40, 50];
+let goalPickerOpen = false;
+
+// Hedef değeri: tam sayıysa ondalıksız, değilse tek basamakla (tr-TR virgülü)
+const fmtGoal = (km) => fmtNum(km, Number.isInteger(km) ? 0 : 1);
+
+// Haftalık hedef kartı. Hedef, karttaki hazır değerlerden ya da özel kutudan
+// tek dokunuşla değiştirilebilir.
+function renderGoalCard(goal, done, pct) {
+  const box = $('#goalBar');
+  const scopeLabel = settings.goalScope === 'run' ? 'sadece koşu' : 'koşu + yürüyüş';
+
+  const picker = `
+    <div class="goal-picker">
+      ${GOAL_PRESETS.map((km) => `<button data-goal="${km}"${km === goal ? ' class="on"' : ''}>${fmtGoal(km)} km</button>`).join('')}
+      <span class="custom">
+        <input type="number" id="goalCustom" min="0" max="500" step="0.5"
+               inputmode="decimal" value="${goal || ''}" aria-label="Özel hedef (km)">
+        <button data-goal="custom">Uygula</button>
+      </span>
+    </div>`;
+
+  if (!goal) {
+    box.innerHTML = `
+      <div class="goal">
+        <div class="goal-head"><span>Haftalık hedef</span><b>yok</b></div>
+        <div class="goal-note">Bir hedef seç, ilerlemeni burada takip edeyim.</div>
+        ${picker}
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="goal">
+      <div class="goal-head">
+        <span>Haftalık hedef · ${scopeLabel}</span>
+        <b>${fmtKm(done)} / ${fmtGoal(goal)} km</b>
+      </div>
+      <div class="goal-bar${pct >= 100 ? ' done' : ''}">
+        <i style="width:${Math.min(100, pct)}%"></i>
+      </div>
+      <div class="goal-head">
+        <span class="goal-note">${pct >= 100
+          ? `Hedefi %${fmtNum(pct - 100, 0)} aşarak tamamladın.`
+          : `Hedefe ${fmtKm(goal - done)} kaldı · %${fmtNum(pct, 0)}`}</span>
+        <button data-goal="toggle">${goalPickerOpen ? 'Kapat' : 'Hedefi değiştir'}</button>
+      </div>
+      ${goalPickerOpen ? picker : ''}
+    </div>`;
 }
 
 // Toplam net kaloriyi kaba yağ eşdeğerine çevirip motivasyon olarak gösterir.
@@ -655,6 +696,24 @@ function bind() {
     }
   });
 
+  $('#goalBar').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-goal]');
+    if (!btn) return;
+    const value = btn.dataset.goal;
+    if (value === 'toggle') {
+      goalPickerOpen = !goalPickerOpen;
+      renderSummary();
+      return;
+    }
+    const km = value === 'custom' ? Number($('#goalCustom').value) : Number(value);
+    if (!Number.isFinite(km) || km < 0) return;
+    settings = store.saveSettings({ weeklyGoalKm: km });
+    goalPickerOpen = false;
+    refresh();
+    syncSettingsForm();
+    toast(km > 0 ? `Haftalık hedef ${fmtGoal(km)} km oldu.` : 'Haftalık hedef kaldırıldı.');
+  });
+
   $('#scoreCard').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-go]');
     if (btn) showView(btn.dataset.go);
@@ -672,6 +731,7 @@ function bind() {
       sex: $('#s-sex').value === 'female' ? 'female' : 'male',
       speedUnit: $('#s-speedunit').value === 'pace' ? 'pace' : 'kmh',
       weeklyGoalKm: Number($('#s-weekly').value) || 0,
+      goalScope: $('#s-goalscope').value === 'run' ? 'run' : 'all',
       restHr: Number($('#s-resthr').value) || null,
       maxHr: Number($('#s-maxhr').value) || null,
     });
@@ -686,7 +746,7 @@ function bind() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `koc-yedek-${todayIso()}.json`;
+    a.download = `paceup-yedek-${todayIso()}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
@@ -728,6 +788,7 @@ function syncSettingsForm() {
   $('#s-sex').value = settings.sex === 'female' ? 'female' : 'male';
   $('#s-speedunit').value = settings.speedUnit === 'pace' ? 'pace' : 'kmh';
   $('#s-weekly').value = settings.weeklyGoalKm ?? '';
+  $('#s-goalscope').value = settings.goalScope === 'run' ? 'run' : 'all';
   $('#s-resthr').value = settings.restHr ?? '';
   const est = estimatedMaxHr(Number(settings.age));
   $('#s-maxhr').value = settings.maxHr ?? '';

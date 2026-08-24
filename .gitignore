@@ -1,4 +1,5 @@
 # Uygulamadan alınan yedekler kişisel veridir — depoya girmemeli.
+paceup-yedek-*.json
 koc-yedek-*.json
 *.backup.json
 

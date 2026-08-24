@@ -64,10 +64,21 @@ h3 { font-size: 0.95rem; }
   opacity: 0.85;
 }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand h1 {
-  background: linear-gradient(100deg, var(--run), var(--walk));
+/* Marka yazısı: "Pace" sakin, "Up" yükselen — sondaki ok da yukarı gidiyor */
+.wordmark {
+  display: flex; align-items: center; gap: 1px;
+  font-size: 1.22rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1;
+}
+.mark-pace { color: var(--text); font-weight: 500; }
+.mark-up {
+  background: linear-gradient(105deg, var(--run), var(--walk));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: var(--run);
+  font-weight: 800;
+}
+.mark-arrow {
+  width: 17px; height: 11px; margin-left: 5px; margin-bottom: 4px;
+  color: var(--walk); flex: none;
 }
 .brand img { border-radius: 8px; }
 .ver { font-size: 0.7rem; color: var(--muted); }
@@ -167,6 +178,24 @@ main { padding: 16px; max-width: 720px; margin: 0 auto; }
 }
 .goal-bar.done i { background: linear-gradient(90deg, var(--goal), var(--speed)); }
 .goal-note { font-size: 0.75rem; color: var(--muted); }
+.goal-head button {
+  padding: 5px 11px; font-size: 0.75rem; border-radius: 999px;
+  color: var(--goal); border-color: color-mix(in srgb, var(--goal) 45%, var(--line));
+  background: color-mix(in srgb, var(--goal) 12%, transparent);
+}
+.goal-picker { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 2px; }
+.goal-picker button {
+  padding: 7px 12px; font-size: 0.82rem; border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.goal-picker button.on {
+  border-color: var(--goal); color: var(--goal);
+  background: color-mix(in srgb, var(--goal) 16%, transparent); font-weight: 650;
+}
+.goal-picker .custom { display: flex; align-items: center; gap: 6px; }
+.goal-picker .custom input {
+  width: 84px; padding: 6px 9px; font-size: 0.82rem; border-radius: 999px; text-align: center;
+}
 
 /* Kalori → kilo ipucu */
 .fat {

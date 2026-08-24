@@ -1,10 +1,10 @@
-# Koç — Kişisel Koşu & Yürüyüş Koçu (PWA)
+# PaceUp — Kişisel Koşu & Yürüyüş Koçu (PWA)
 
 Koşularını ve yürüyüşlerini kaydettiğin, nabız / mesafe / tempo değerlerini dönemler
 arasında kıyaslayan küçük bir PWA. Derleme adımı yok: saf HTML + CSS + ES modülleri.
 Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
-**Sürüm:** v0.3.0
+**Sürüm:** v0.3.1
 
 ## Neler var
 
@@ -13,6 +13,9 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
   gerçekçi olmayan girdileri (2 dk/km altı tempo, ortalamadan düşük maksimum nabız vb.) reddeder.
 - **Özet:** koç notu, bu hafta vs. geçen hafta (mesafe, süre, tempo, nabız), haftalık
   hedef yüzdesi, son 12 aktivitenin grafiği ve kişisel rekorlar.
+- **Haftalık hedef:** özet ekranındaki karttan hazır değerlerle (10–50 km) ya da özel
+  bir sayı yazarak tek dokunuşla değiştirilir; hedefin koşu + yürüyüşü mü yoksa sadece
+  koşuyu mu sayacağı Ayarlar'dan seçilir.
 - **Antrenman puanı (0–10):** her kayıt, yaşın ve kilon referans alınarak puanlanır;
   puan ekranında renkli halka, kademe adı ve puanın nasıl oluştuğunun dökümü yer alır.
   Ayrıntı için aşağıdaki *Puanlama* bölümü.
@@ -34,6 +37,12 @@ Veriler yalnızca cihazda (`localStorage`) tutulur, hiçbir yere gönderilmez.
 
 Ok yönü değişimin işaretini (arttı/azaldı), renk ise iyileşme mi kötüleşme mi olduğunu
 gösterir — tempo, nabız ve atış/km için düşük olan iyidir.
+
+## Sürüm numaralama
+
+Güncellemelerde en sağdaki hane artar (v0.3.0 → v0.3.1 → v0.3.2 …). Ortadaki hane
+yalnızca büyük bir yetenek eklendiğinde yükselir. Her sürümde `sw.js` içindeki
+`VERSION` sabiti de aynı numarayla güncellenir; eski önbellek bu sayede temizlenir.
 
 ## Çalıştırma
 
@@ -149,7 +158,7 @@ Verimli (6,5–7,9) · Güçlü (8–8,9) · Zirve (9–10).
   Analitik, izleyici, harici font veya CDN kullanılmıyor.
 - Linki bilen biri uygulamayı açabilir ama kendi boş kopyasını görür; veriler
   tarayıcı bazlıdır, paylaşılmaz.
-- **Dışa aktar** ile alınan `koc-yedek-*.json` dosyası tüm kayıtlarını içerir;
+- **Dışa aktar** ile alınan `paceup-yedek-*.json` dosyası tüm kayıtlarını içerir;
   depoya eklenmemesi için `.gitignore`'a alındı. Yedeği paylaşırken dikkat et.
 - Tarayıcı verilerini temizlemek kayıtları siler. Düzenli olarak dışa aktarıp
   yedek almak iyi olur.

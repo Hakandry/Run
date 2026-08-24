@@ -3,6 +3,7 @@ const KEY = 'kocpwa.v1';
 
 const DEFAULT_SETTINGS = {
   weeklyGoalKm: 20,
+  goalScope: 'all',   // 'all' | 'run'
   restHr: 60,
   maxHr: null,   // boşsa yaştan tahmin edilir (Tanaka)
   age: null,

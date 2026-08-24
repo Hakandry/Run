@@ -7,20 +7,28 @@
 <meta name="description" content="Koşu ve yürüyüşlerini kaydet, nabız ve mesafe kıyaslamalarını gör.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Koç">
+<meta name="apple-mobile-web-app-title" content="PaceUp">
 <link rel="apple-touch-icon" href="./icons/icon.svg">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./css/styles.css">
-<title>Koç — Kişisel Koşu & Yürüyüş Koçu</title>
+<title>PaceUp — Kişisel Koşu & Yürüyüş Koçu</title>
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
     <img src="./icons/icon.svg" alt="" width="28" height="28">
     <div>
-      <h1>Koç</h1>
-      <span class="ver" id="appVersion">v0.3.0</span>
+      <h1 class="wordmark">
+        <span class="mark-pace">Pace</span><span class="mark-up">Up</span>
+        <svg class="mark-arrow" viewBox="0 0 20 13" aria-hidden="true" focusable="false">
+          <path d="M1.6 11 L7 5.4 L10.2 8.4 L18 1.6" fill="none" stroke="currentColor"
+                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12.6 1.6 H18.4 V7" fill="none" stroke="currentColor"
+                stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </h1>
+      <span class="ver" id="appVersion">v0.3.1</span>
     </div>
   </div>
   <button class="ghost" id="installBtn" hidden>Yükle</button>
@@ -211,6 +219,13 @@
       <label class="field">
         <span>Haftalık mesafe hedefi (km)</span>
         <input type="number" id="s-weekly" min="0" step="0.5">
+      </label>
+      <label class="field">
+        <span>Hedef neyi sayar?</span>
+        <select id="s-goalscope">
+          <option value="all">Koşu + yürüyüş</option>
+          <option value="run">Sadece koşu</option>
+        </select>
       </label>
       <label class="field">
         <span>Dinlenme nabzı</span>

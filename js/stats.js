@@ -151,6 +151,9 @@ export function typeAverages(list) {
 }
 
 // Basit koç mesajı: veriye göre tek cümlelik yönlendirme.
+const tr1 = (n) => n.toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const trGoal = (n) => n.toLocaleString('tr-TR', { maximumFractionDigits: 1 });
+
 export function coachMessage(list, settings) {
   if (!list.length) {
     return 'Henüz kayıt yok. İlk aktiviteni ekle, kıyaslamaya hemen başlayalım.';
@@ -161,19 +164,23 @@ export function coachMessage(list, settings) {
   const parts = [];
 
   if (goal > 0) {
-    const remaining = goal - thisWeek.totalKm;
+    // Hedef "sadece koşu" ise haftalık toplam da yalnızca koşulardan sayılır.
+    const weekList = inRange(list, weekStartIso(0), weekStartIso(-1));
+    const scoped = settings.goalScope === 'run' ? weekList.filter((a) => a.type === 'run') : weekList;
+    const done = scoped.reduce((sum, a) => sum + a.distanceKm, 0);
+    const remaining = goal - done;
     parts.push(remaining <= 0
-      ? `Haftalık ${goal} km hedefini tamamladın (${thisWeek.totalKm.toFixed(1)} km). Tebrikler.`
-      : `Bu hafta ${thisWeek.totalKm.toFixed(1)}/${goal} km — hedefe ${remaining.toFixed(1)} km kaldı.`);
+      ? `Haftalık ${trGoal(goal)} km hedefini tamamladın (${tr1(done)} km). Tebrikler.`
+      : `Bu hafta ${tr1(done)}/${trGoal(goal)} km — hedefe ${tr1(remaining)} km kaldı.`);
   } else {
-    parts.push(`Bu hafta ${thisWeek.totalKm.toFixed(1)} km, ${thisWeek.count} aktivite.`);
+    parts.push(`Bu hafta ${tr1(thisWeek.totalKm)} km, ${thisWeek.count} aktivite.`);
   }
 
   const d = delta(thisWeek.totalKm, lastWeek.totalKm, false);
   if (Number.isFinite(d.pct) && Math.abs(d.pct) >= 5) {
     parts.push(d.pct > 0
-      ? `Geçen haftaya göre hacmin %${Math.abs(d.pct).toFixed(0)} arttı${d.pct > 30 ? ' — sıçrama biraz sert, toparlanmaya dikkat.' : '.'}`
-      : `Geçen haftaya göre hacmin %${Math.abs(d.pct).toFixed(0)} düştü.`);
+      ? `Geçen haftaya göre hacmin %${Math.round(Math.abs(d.pct))} arttı${d.pct > 30 ? ' — sıçrama biraz sert, toparlanmaya dikkat.' : '.'}`
+      : `Geçen haftaya göre hacmin %${Math.round(Math.abs(d.pct))} düştü.`);
   }
 
   const prev = list.filter((a) => a.type === last.type)[1];

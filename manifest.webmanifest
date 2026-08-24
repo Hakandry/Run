@@ -1,6 +1,6 @@
 {
-  "name": "Koç — Kişisel Koşu & Yürüyüş Koçu",
-  "short_name": "Koç",
+  "name": "PaceUp — Kişisel Koşu & Yürüyüş Koçu",
+  "short_name": "PaceUp",
   "description": "Koşu ve yürüyüşlerini kaydet, nabız/mesafe/tempo kıyaslamalarını gör.",
   "start_url": "./index.html",
   "scope": "./",
